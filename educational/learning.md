@@ -4,7 +4,7 @@ This document contains external knowledge base relavant to concepts, technologie
 
 ### Learning resources
 
-1. Public Google Doc on Stuff to learn:  [Click here](https://docs.google.com/document/d/1CYgngbsXZA3b25CC8GBsRI2cRXUT7buZ5YZQOm6vb2M/edit?usp=sharing)
+1. Public Google Doc on Stuff to learn (contains some of mani-hash's personal notes and/or thoughts..):  [Click here](https://docs.google.com/document/d/1CYgngbsXZA3b25CC8GBsRI2cRXUT7buZ5YZQOm6vb2M/edit?usp=sharing)
 
 
 ### Additional Note
