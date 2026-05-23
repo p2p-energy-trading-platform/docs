@@ -47,7 +47,7 @@ Security is critical for a peer-to-peer energy trading platform. This project ha
 
 - Using feature branches, small PRs, and mandatory reviews.
 - Turn off inline suggestions from copilot. Stick to ask, edit and plan if you must use them but use them at moderate amounts (or prefer llm as a faster search engine).
-- By understanding that for this project specifically, your credits and usage limits will be over mcuh faster if you write prompts without understanding what you wrote in the first place
+- By understanding that for this project specifically, your credits and usage limits will be over much faster if you write prompts without understanding what you wrote in the first place
 - Requiring automated tests and basic security checks before merge.
 - Documenting assumptions, limitations, and any temporary workarounds (this, please add a comment if you are working around a hacky fix or you generated some complex code that you did not understand but it works..).
 
