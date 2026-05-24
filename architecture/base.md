@@ -4,6 +4,12 @@ This document contains our intial idea about the architecture diragram that we h
 
 **NOTE**: This diagram is not fixed and may be subject to several changes in the future. Everyone in the team should verify the architecture and update this document if necessary.
 
+## Diagram image
+
+A picture is much easier to understand so here is the image. The mermaid diagram has much more information so refer that too!
+
+![Architecture Image](./architecture.png)
+
 ## Diagram overview
 
 I have pasted a mermaid live diagram of the architecture. You can view this in [Mermaid Live](https://mermaid.live) by pasting the raw codeblock or you can directly view it in github!
