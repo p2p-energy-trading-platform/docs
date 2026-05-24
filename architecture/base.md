@@ -6,7 +6,7 @@ This document contains our intial idea about the architecture diragram that we h
 
 ## Diagram overview
 
-I have pasted a mermaid lie diagram of the architecture. You can view this in [Mermaid Live](https://mermaid.live) by pasting the raw codeblock or you can directly view it in github!
+I have pasted a mermaid live diagram of the architecture. You can view this in [Mermaid Live](https://mermaid.live) by pasting the raw codeblock or you can directly view it in github!
 
 ```mermaid
 graph TB
