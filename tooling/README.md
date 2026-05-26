@@ -4,7 +4,7 @@ This folder contains short docs for developer tools and workflow helpers used by
 
 ## Current topics
 
-- [Husky commit hooks](husky.md) - local Git hooks for commit-message and pre-commit checks.
+- [Commit workflow](commit-workflow.md) - Husky, commitlint, and lint-staged for commit checks.
 
 ## Adding new tooling docs
 
