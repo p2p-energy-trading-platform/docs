@@ -14,6 +14,25 @@ This page explains three tools we can use to manage commit messages and staged f
 2. commitlint checks if the commit message is valid.
 3. lint-staged runs checks only on the files you have staged.
 
+## Simple installation guide
+
+1. Make sure Node.js and npm are installed.
+2. Install the tools in the project:
+
+	```bash
+	npm install --save-dev husky @commitlint/cli @commitlint/config-conventional lint-staged
+	```
+
+3. Turn on Husky:
+
+	```bash
+	npx husky init
+	```
+
+4. Add a `commit-msg` hook for commitlint.
+5. Add a `pre-commit` hook for lint-staged.
+6. Keep the checks small and fast.
+
 ## Why this setup is useful
 
 - It keeps commit messages in one style.
