@@ -36,18 +36,17 @@ graph TB
         Mosquitto["MQTT Broker<br/>(Mosquitto)"]:::gatewayStyle
     end
 
-    subgraph API_SERVICES_LAYER ["Core API & Services Layer (gRPC Communication)"]
-        Gateway["API Gateway<br/>(Fastify / Node.js)"]:::gatewayStyle
-        Auth["Auth Service<br/>(Fastify / Node.js)"]:::serviceStyle
+    subgraph API_SERVICES_LAYER ["Core API & Express Services Layer (REST & WebSockets)"]
+        Gateway["API Gateway / Express App<br/>(Node.js / Socket.io)"]:::gatewayStyle
+        Auth["Auth Service<br/>(Login & Security)"]:::serviceStyle
         OMS["Order Management (OMS)<br/>(Node.js)"]:::serviceStyle
-        Billing["Billing & Settlement<br/>(Go / Node.js)"]:::billingStyle
         Ticker["Market Data / Ticker<br/>(Node.js)"]:::serviceStyle
-        Notify["Notification Service<br/>(Node.js)"]:::serviceStyle
-        Admin["Admin Service<br/>(Fastify / Node.js)"]:::serviceStyle
+        Notify["Notification Service<br/>(Manages Alerts & DB Logs)"]:::serviceStyle
+        Admin["Admin Service<br/>(Node.js)"]:::serviceStyle
     end
 
     subgraph CACHE_LAYER ["In-Memory Cache & Pub/Sub Layer"]
-        Redis[("Redis Memory Store<br/>• Order Book Cache<br/>• Rate Limiter<br/>• WS Pub/Sub")]:::redisStyle
+        Redis[("Redis Memory Store<br/>• Order Book Cache<br/>• WS Pub/Sub")]:::redisStyle
     end
 
     subgraph MESSAGING_SPINE ["Central Data & Messaging Spine (Apache Kafka)"]
@@ -55,17 +54,17 @@ graph TB
             T_Orders["orders"]
             T_Trades["trades"]
             T_Telemetry["telemetry"]
-            T_Alerts["price-alerts"]
+            T_Alerts["push-notifications"]
         end
         Connector["Kafka Connect<br/>MQTT Source Connector"]:::kafkaStyle
     end
 
     subgraph ENGINE_LAYER ["Matching Engine Layer"]
-        Engine["Go Matching Engine<br/>• Pure In-Memory Book<br/>• Sub-100ms Latency"]:::engineStyle
+        Engine["Node.js Matching Engine<br/>• Redis Pub/Sub Backed<br/>• Sub-100ms Latency"]:::engineStyle
     end
 
     subgraph DATA_STORAGE_LAYER ["Data Storage & Analytics Layers"]
-        Postgres[("Primary Relational DB<br/>(PostgreSQL + Prisma)")]:::dbStyle
+        Postgres[("Primary Relational DB<br/>(PostgreSQL + Prisma)<br/>• User & Order States")]:::dbStyle
         Timescale[("Time-Series & Historical<br/>(TimescaleDB)")]:::dbStyle
         Analytics["Batch Analytics<br/>(Spark / dbt)"]:::dbStyle
         S3[("Cold Data Lake<br/>(S3 / MinIO)")]:::dbStyle
@@ -77,7 +76,6 @@ graph TB
     end
 
     subgraph OBSERVABILITY_LAYER ["System Observability & Monitoring"]
-        Prometheus["Prometheus Database<br/>(Scrapes System Metrics)"]:::monitorStyle
         Grafana["Grafana Visualization<br/>(Operational Dashboards)"]:::monitorStyle
     end
 
@@ -93,9 +91,10 @@ graph TB
     %% Client Frontend Entry & Trading Pipeline
     ClientWeb -->|"WebSockets / REST"| Gateway
     ClientMobile -->|"WebSockets / REST"| Gateway
-    Gateway -->|"gRPC (Rate Limit Check)"| Redis
-    Gateway -->|"gRPC"| Auth
-    Gateway -->|"gRPC (Validated Order)"| OMS
+    Gateway -->|"Session Check"| Redis
+    Gateway -->|"Route"| Auth
+    Gateway -->|"Route"| OMS
+    Gateway -->|"Fetch Notification History"| Notify
     
     OMS -->|"Write PENDING State"| Postgres
     OMS -->|"Publish Event"| T_Orders
@@ -105,16 +104,21 @@ graph TB
     Engine -->|"Publish Execution"| T_Trades
     
     %% Post-Trade Clearing & Market Data Dissemination
-    T_Trades -->|"Consumes"| Billing
     T_Trades -->|"Consumes"| Ticker
-    
-    Billing -->|"Update Financial Ledger"| Postgres
     Ticker -->|"Update Live Snapshots"| Redis
     
-    %% Notifications Alert Pipeline
-    Ticker -.->|"Identify Alert Condition"| T_Alerts
-    T_Alerts --> Notify
-    Notify -->|"Expo Push Notifications"| ClientMobile
+    
+    %% High-frequency price triggers send events to the notification topic
+    Ticker -.->|"Price Alert Event"| T_Alerts
+    
+    %% Other services communicate directly with Notification Service for system alerts
+    Auth -->|"Trigger Login Alert"| Notify
+    Admin -->|"Trigger Offer/Promo"| Notify
+    
+    %% Notification service consumes Kafka stream, handles DB logic, and pushes outbound
+    T_Alerts -->|"Consume Push Events"| Notify
+    Notify -->|"Write Logs / Offers / History"| Postgres
+    Notify -->|"Expo Push API"| ClientMobile
 
     %% Machine Learning Data Pipeline
     Timescale --> Analytics
@@ -122,18 +126,14 @@ graph TB
     Postgres -.->|"User Context"| AI_Engine
     S3 -.->|"Historical OHLCV Training Data"| Models
     AI_Engine --- Models
-    AI_Engine -->|"gRPC Forecasts"| Gateway
+    AI_Engine -->|"HTTP Forecasts"| Gateway
 
-    %% Observability Scrape Loops (No storage lines to prevent clutter)
-    Gateway -.->|"Metrics Scrape"| Prometheus
-    Kafka_Topics -.->|"Lag Monitoring"| Prometheus
-    Engine -.->|"Latency Scrape"| Prometheus
-    Prometheus -->|"Metrics Query"| Grafana
-    
-    %% Note: Grafana pulls out-of-band directly from Prometheus & TimescaleDB
+    %% Observability Scrape Loops
+    Kafka_Topics -.->|"Pipeline Monitoring"| Grafana
     Timescale -.->|"Logically Queried by"| Grafana
-
-    %% --- Structural Subgraph Layout Ties ---
+    Engine -.->|"Latency Metrics"| Grafana
+    
+    %% Structural Subgraph Layout Ties
     OMS --> Redis
     Admin --> Postgres
 ```
