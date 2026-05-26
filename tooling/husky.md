@@ -2,6 +2,8 @@
 
 Husky is the hook manager we will use to run local Git hooks for this project.
 
+**Important:** Husky is best suited for Node.js environments that already use npm, pnpm, or yarn. It is not the first choice for pure Python or Go services that want to avoid a Node dependency.
+
 ## Why we use it
 
 - Keep commit messages consistent.
@@ -27,4 +29,5 @@ The hook setup should help with:
 
 - Do not put heavy tests in the hook unless we explicitly agree on it.
 - Keep the hook messages short and actionable.
+- Please research similar hook tools for Python and Go so we can document the best alternative for non-Node services.
 
