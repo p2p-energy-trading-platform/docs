@@ -22,7 +22,7 @@ Main flow:
 
 Visual Diagram:
 
-```
+```mermaid
 %%{init: {'theme': 'dark', 'themeVariables': { 'background': '#0d1117', 'primaryColor': '#1f6feb', 'mainBkg': '#161b22', 'nodeBorder': '#30363d' }}}%%
 sequenceDiagram
     autonumber
