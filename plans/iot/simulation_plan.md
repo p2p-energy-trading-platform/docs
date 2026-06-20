@@ -210,11 +210,39 @@ A house's ID (like `house0042`) and its meter's ID are fixed when the house is f
 
 ---
 
-**NOTE**: Indirect reactivity will updated later
-
 ## 5. Indirect Reactivity between IoT simulation and GridX system
 
-*Add later*
+**NOTE**: Only for houses with energy storage mediums
+
+### 5.1 Architectural Principle of Indirect Reactivity
+
+The GridX platform operates on a strict separation of concerns between the financial ledger and the physical microgrid state. The core backend never directly mutates the state or the database of the physical simulator. Instead, it relies on a decoupled, closed-loop asynchronous mechanism termed **Indirect Reactivity**.
+
+The physical assets report their instantaneous state metrics upwards to the system. When a condition requires a physical shift in power behavior, the system dispatches an outbound actuation command downstream. The simulator receives this command, modifies its internal hardware calculations, and the resulting change is naturally observed in the subsequent data cycle. This design perfectly preserves subsystem isolation and mirrors real-world cloud-to-hardware smart grid infrastructure.
+
+### 5.2 Supported Energy Storage Mediums (Flexible Assets)
+
+Because weather patterns (solar generation) and baseload human consumption are highly inflexible variables, the system relies entirely on flexible energy storage mediums to execute reactive commands. The system dynamically discovers and supports two major categories of storage assets:
+
+* Stationary Battery Energy Storage Systems (BESS): Residential or commercial home batteries (Ex: lithium-ion setups) that can absorb localized surplus power during generation peaks or discharge energy to offset deficits.
+
+* Mobile Electric Vehicle (EV) Storage: Electric vehicle batteries integrated through smart chargers utilizing Vehicle-to-Grid (V2G) capabilities. These act as deferrable loads that can dynamically alter or pause their charging rates based on external command payloads.
+
+**NOTE**: The above needs to be properly modelled in the above schemas!
+
+### 5.3 Dispatch service & Actuation Execution via MQTT Commands
+
+**NOTE**: VERY IMPORTANT: Dispatch service is not part of the simulation! It is a separate service that runs along the data pipelines inside IoT ingestion service.
+
+Refer to the `Dspatch Service` topic in the following [document]('../data_pipelines/iot_ingestion.md')
+
+### 5.4 Simulator State Processing
+
+1. Payload Ingestion: The IoT simulator catches the inbound JSON packet over the dedicated actuation topic.
+
+1. State Transition: The simulator processes the values within its local execution context (simState.ts), modifying the internal State of Charge (SoC) parameters of the battery matrix.
+
+1. Meter Convergence: On the very next 5-second tick loop, the calculated net metrics (net_kw=solar_kw−consumption_kw−battery_charging_kw) naturally converge with the newly applied physical behavior, closing the loop.
 
 ---
 
