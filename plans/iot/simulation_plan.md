@@ -25,7 +25,7 @@ Every meter sends one JSON message per tick (a "tick" being one reading, e.g. ev
 
 - **`consumer`** - a normal house with no solar panels. Only uses electricity.
 - **`residential_prosumer`** - a house with solar panels. Can produce and use electricity.
-- **`commercial`** - a bigger generator, like a small solar farm or a factory rooftop. Same idea as a prosumer, just much bigger (more on this in §4).
+- **`commercial`** - a bigger generator, like a small solar farm or a factory rooftop. Same idea as a prosumer, just much bigger.
 
 ### 2.1 The meter reading
 
@@ -106,7 +106,7 @@ Here's how we actually use it:
 
    `solar_kw = rated_solar_kw × (irradiance / 1000) × panel_efficiency_factor`
 
-   ...with a small bit of random noise added on top, so two houses under the same sky don't produce identical numbers (more on this in §4.5).
+   ...with a small bit of random noise added on top, so two houses under the same sky don't produce identical numbers.
 4. If Open-Meteo is down or unreachable, we fall back to a simple **clear-sky model** - basically a sine-wave shape based on time of day, so the simulation keeps running instead of breaking.
 
 ---
@@ -182,7 +182,7 @@ load_archetype: family_both_work
 load_scale_factor: 1.34
 ```
 
-Whether archetypes get assigned completely at random, or deliberately balanced (e.g. "make sure 50% of this grid is `family_both_work`"), is still open - see §9.
+Whether archetypes get assigned completely at random, or deliberately balanced (e.g. "make sure 50% of this grid is `family_both_work`"), is still open.
 
 ### 4.6 Making solar output different between houses
 
@@ -190,7 +190,7 @@ All houses in the same grid share one weather reading - we don't call the weathe
 
 `solar_kw = shared_grid_irradiance × (rated_solar_kw / 1000) × panel_efficiency_factor × (1 + house_noise)`
 
-- **Shared grid irradiance** is the one number from §3 - same for every house in this grid, right now.
+- **Shared grid irradiance** is same for every house in this grid, right now.
 - **Rated solar size** is how big this house's panels are - bigger houses or commercial entities simply have a bigger number here.
 - **Panel efficiency** represents things like panel angle, shading, or how well-maintained the panels are. We pick this once per house when it's created.
 - **House noise** is small random jitter, representing things a single shared weather number can't capture - like a cloud shadow that happens to pass over one roof but not the one next door.
@@ -206,7 +206,7 @@ panel_efficiency_factor: 0.88
 
 ### 4.7 Houses keep the same ID forever
 
-A house's ID (like `house0042`) and its meter's ID are fixed when the house is first created, and they don't change if we restart the simulator. This matters a lot for §6 below - the rest of the system needs to recognize the same house every time, not think a new one appeared after every restart.
+A house's ID (like `house0042`) and its meter's ID are fixed when the house is first created, and they don't change if we restart the simulator. This matters a lot since the rest of the system needs to recognize the same house every time, not think a new one appeared after every restart.
 
 ---
 
@@ -248,7 +248,7 @@ The general idea: where it's cheap to do the real thing properly (weather-driven
 
 ## 8. How the project is organised in code
 
-**Language:** TypeScript. This gives us safety on the JSON shapes from §2 and the house config fields from §4 - useful once more than one person is editing this codebase.
+**Language:** TypeScript.
 
 ```
 iot-simulator/
@@ -256,7 +256,7 @@ iot-simulator/
 ├── tsconfig.json
 ├── .eslintrc.json
 ├── config/
-│   └── grids.yaml                  # all grid/house settings, see §4.4
+│   └── grids.yaml                  # all grid/house settings
 ├── src/
 │   ├── index.ts                    # starts everything up
 │   ├── config/
@@ -269,7 +269,7 @@ iot-simulator/
 │   │   ├── Grid.ts
 │   │   ├── House.ts
 │   │   ├── SolarSimulator.ts
-│   │   ├── LoadSimulator.ts          # archetype + scale factor logic, §4.5
+│   │   ├── LoadSimulator.ts          # archetype + scale factor logic
 │   │   ├── BatterySimulator.ts
 │   │   └── SmartMeter.ts            # combines everything into one reading
 │   ├── mqtt/
@@ -278,16 +278,14 @@ iot-simulator/
 │   ├── scheduler/
 │   │   └── tickLoop.ts              # decides when each meter publishes
 │   ├── store/
-│   │   └── simState.ts              # the simulator's own memory, see §6
+│   │   └── simState.ts              # the simulator's own memory
 │   └── types/
-│       ├── payloads.ts              # the exact shapes from §2
-│       └── config.ts                # the exact shapes from §4
+│       ├── payloads.ts              # the exact shapes
+│       └── config.ts                # the exact shapes
 ├── test/
 │   └── ...                         # tests for each piece above
 └── README.md
 ```
-
-One thing to notice on purpose: there's **no folder for Kafka, no folder for "backend," no folder for clients**. The only place this code talks to the outside world is `mqtt/`. If someone is ever tempted to add a shortcut straight to the backend, there's nowhere natural in this structure for that code to live - which is exactly the point.
 
 ---
 
@@ -295,7 +293,7 @@ One thing to notice on purpose: there's **no folder for Kafka, no folder for "ba
 
 - Exact tick speed for each meter type - we're assuming 5 seconds for the main reading, but should solar/load update faster internally even if the meter only reports every 5 seconds?
 - How many grids and houses to actually run by default for the demo (this is just a config value, not a code decision).
-- Should house archetypes (§4.5) be assigned completely randomly, or should we guarantee a specific mix per grid?
+- Should house archetypes be assigned completely randomly, or should we guarantee a specific mix per grid?
 - Should `commercial_count` be a fixed number per grid, or a ratio like `prosumer_ratio`?
-- Should the `meta` block in §2.1 (weather info) be removed before we consider this "final," since a real meter wouldn't actually know the weather - only its own output?
+- Should the `meta` block in weather info be removed before we consider this "final," since a real meter wouldn't actually know the weather - only its own output?
 - We need to agree on the exact MQTT topic names with whoever builds the Kafka bridge, so both sides agree independently rather than guessing each other's format.
