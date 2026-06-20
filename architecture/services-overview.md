@@ -60,7 +60,7 @@ Info: A cross-platform mobile application designed for household prosumers to mo
 
 #### Features:
 
-* Biometrics auth & login/register page
+* Login/register page
 * Simplified home view with buy/sell toggle
 * Interactive minimal charts
 * Automated dashboards
@@ -96,15 +96,213 @@ Info: A centralized entrypoint that handles external client REST and WebSocket t
 #### Techstack & Justifications:
 
 * Node JS
-* Fastify
+* Fastify: Less boilerplate, simple and easy to develop
 
 ---
 
 ### 4. Auth Service
 
-Full Plan & Documentation: **Not available will be added in future**
+Full Plan & Documentation: [Auth Plans](../plans/auth/README.md)
 
 Info: Service that utilizes JWT and OAuth 2.0 to handle registration, secure session management, and authentication across the platform.
 
-**NOTE**: The rest will be filled later
+#### Features:
+
+* User Authentication & Identity Management
+* Stateless JWT Issuance
+* Session Revocation & Blacklisting
+
+#### Techstack & Justification:
+
+* Node JS
+* Fastify: Less boilerplate, rich ecosystem for auth simple and easy to develop
+* OAuth 2.0 / JWT Standard
+
+---
+
+#### 5. IoT Simulation
+
+Full Plan & Documentation: **Not available will be added in future**
+
+Info: A dynamic telemetry simulation layer to publish synthetic solar generation data every few seconds to inject physical supply signals into the exchange. Also includes a mock DEWA app to allow users to register their smart meters to the gridX system.
+
+#### Services:
+
+* IoT Smart Meter Simulator
+* DEWA Mock App
+
+#### Features:
+
+* IoT smart meter data generation
+* House, grids models, generation & seeding
+* Multiple types of users local to iot simulation (prosumers, consumers, energy generators)
+* Weather data integration
+* Energy consumption/generation randomness
+* IoT meter registration and payload security
+* Indirect Reactivity to system trading events
+* DEWA Mock app for simulating 3rd party smart meter software & registration with gridx
+
+#### Techstack & Justification:
+
+* Node JS
+* Fastify: HTTP gateway between mock app and smart meters
+* Next js: DEWA mock app (very simple barebones web app)
+
+---
+
+### 6. Data Pipeline
+
+Full Plan & Documentation: **Not available will be added in future**
+
+Info: A robust event streaming and data processing pipeline that handles smart meter feeds, trade events and machine learning pipeline.
+
+#### Services/Concerns:
+
+* IoT smart meter data pipeline: pipeline + ingestion consumer
+* Candle & trade events pipeline: pipeline + market ticker service (acts as consumer too)
+* MLOps Pipeline: pipeline + dbt + minio 
+
+#### Services:
+
+* MQTT Broker
+* Apache Kafka + plugins
+* Redis
+* Timescaledb
+* MinIO
+
+#### Features:
+
+* Receives incoming data via mqtt broker from smart meters and pushes it to kafka
+* Passes trade events published by OMS and matching engine
+* Stores recent data in timescaledb and uses minio for historical data
+* Use tools (dbt) to aggregrate frequently needed data for easy access
+* Trigger automatic model training via MLOPs pipeline
+* Redis for caching and quick data access between several services
+
+#### Techstack & Justification:
+
+* MQTT broker: Connect IoT smart meters with system
+* Apache Kafka: For raw events streaming between services
+* Redis: Fast cache and state management
+* Timescaledb: For storing records of recent data
+* dbt: Performing data transformations, integrates with mlops pipeline. Very lightweight
+* duckDB: Very lightweight, can be used to query minio. Bridges dbt and minio
+* Minio: For historical data storage
+* Go/Nodejs/plugins: For data ingestion services (included inbetween pipelines)
+
+---
+
+### 7. Market Ticker Service
+
+Full Plan & Documentation: **Not available will be added in future**
+
+Info: Ticker service that listens to trade events and streams real time candle data, paints hot candles, and aggregrates handles to timescaledb 
+
+#### Features:
+
+* Instantly loads and caches top recent candles in redis (memory store)
+* Opens gRPC streaming to api gateway to instantly stream live candles
+* Consumes trade events and writes closed candle data to storage layers
+
+#### Techstack & Justification:
+
+* Go - Concurrent I/O Handling, native support for gRPC
+
+---
+
+### 8. Order Management Service
+
+Full Plan & Documentation: **Not available will be added in future**
+
+Info: A service that validates incoming orders, checks pre trade filters, handles idempotency and publishes orders to Apache Kafka
+
+#### Features:
+
+* Routes trade requests/responses
+* Handles trigger pre trade logic / filters before matching engine gets the event
+* Handles idempotency checks
+
+#### Techstack & Justification:
+
+* Go - low latency, native support for kafka and gRPC
+
+---
+
+### 9. Matching Engine
+
+Full Plan & Documentation: **Not available will be added in future**
+
+Info: A high performance atomic machine engine that maintains in memory sorted order book to pair energy
+buy or sell orders.
+
+#### Features:
+
+* Atomic Order Matching
+* In-Memory Order Book Maintenance
+* Consumes incoming orders from dedicated Kafka ingest topics and instantly emits events
+* Deterministic State Recovery
+
+#### Techstack & Justification:
+
+* C++ - Deterministic Execution and low latency
+
+---
+
+### 10. AI/ML forecast engine
+
+Full Plan & Documentation: **Not available will be added in future**
+
+Info: A predictive service that trains models on historical OHLCV data to serve 24 hour energy price and demand forecasts
+
+#### Features:
+
+* Automated Model Training Pipelines (combines with data pipeline)
+* 24-Hour Predictive Forecasting
+* Analyzes forecasted spikes to predict potential grid stress or localized energy surpluses
+* Expose relavant forecast data for quick actions
+
+#### Techstack & Justification:
+
+* FastAPI - Python ecosystem is beneficial for ai/ml services
+* Prophet - Simple and robust enough
+
+---
+
+### 11. Billing & Wallet Service
+
+Full Plan & Documentation: **Not available will be added in future**
+
+Info: A transaction service that consumes executed trades and performs financial settlement, and updates user balances in the core database.
+
+#### Features:
+
+* Asynchronous Clearing & Settlement
+* ACID-Compliant Wallet Management
+* Temporary locking of buyer's credits and only release upon matching (escrow ledgering)
+* Audit Logging & Invoicing
+
+#### Techstack & Justification:
+
+* Go - High transactional safety and concurrency
+
+---
+
+### 12. Notification Service
+
+Full Plan & Documentation: **Not available will be added in future**
+
+Info: An event-driven service that triggers instant push notifications via Expo Push and handles system wide notification alerts for in-app, email and other channels
+
+#### Features:
+
+* Multi-Channel Dispatch Engine
+* Expo Push Token Management
+* Real-Time Trade & Matching Alerts
+* Smart Meter & Grid Alerts
+
+#### Techstack & Justification:
+
+* Fastify - Asynchronous I/O Execution and easy to build
+
+
 
