@@ -24,10 +24,14 @@ Example command / dispatch schedule:
 
 ```
 {
-    "id": "bat_001",
-    "command": "charge_battery",
-    "rate_kw": 3.0,
-    "duration_seconds": 5
+  "dispatch_id": "dsp_20260616_0042_001",
+  "asset_id": "bat_001",
+  "asset_type": "bess",
+  "command": "set_power_kw",
+  "target_kw": -3.0,
+  "duration_seconds": 3600,
+  "issued_at": "2026-06-16T14:00:00Z",
+  "expires_at": "2026-06-16T15:00:00Z"
 }
 ```
 
