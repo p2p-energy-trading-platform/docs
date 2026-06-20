@@ -44,8 +44,23 @@ This is the main message. It gets sent constantly, every tick.
     "solar_kw": 2.41,
     "consumption_kw": 0.87,
     "net_kw": 1.54,
-    "battery_soc_pct": 63.5,
-    "battery_kw": -0.30
+    "storage_assets": [
+      {
+        "asset_id": "bat_001",
+        "asset_type": "bess",
+        "soc_pct": 63.5,
+        "power_kw": -0.30,
+        "capacity_kwh": 10.0
+      },
+      {
+        "asset_id": "ev_001",
+        "asset_type": "ev",
+        "soc_pct": 41.0,
+        "power_kw": -1.5,
+        "capacity_kwh": 40.0,
+        "plugged_in": true
+      }
+    ]
   },
   "meta": {
     "weather_irradiance_wm2": 612.0,
@@ -57,7 +72,7 @@ This is the main message. It gets sent constantly, every tick.
 A few things to know about this:
 
 - **`net_kw`** is just `solar_kw - consumption_kw` (plus a bit from the battery, if there is one). A positive number means the house has surplus power to sell. A negative number means it needs to buy. This is exactly what a real smart meter would calculate too.
-- If a house has **no battery**, we simply leave out `battery_soc_pct` and `battery_kw` completely, instead of sending `0`. That way, "no battery" and "battery sitting idle at zero" don't get confused.
+- If a house has **no battery** or other storage mediums then the **`storage_assets`** field will be empty.
 - The **`meta`** block is just extra debug info - it lets us double check that solar output makes sense given the weather, without having to call the weather API again ourselves. Nothing downstream should depend on this block existing.
 - **`schema_version`** exists so that if we change this format later, nothing breaks silently.
 
@@ -73,13 +88,34 @@ Every so often (say, once a minute), each meter also sends a much smaller messag
   "meter_id": "meter-grid01-house0042",
   "status": "online",
   "device_class": "residential_prosumer",
-  "has_battery": true,
   "rated_solar_kw": 5.0,
-  "rated_battery_kwh": 10.0
+  "flexible_assets": [
+    {
+      "asset_id": "bat_001",
+      "asset_type": "bess",
+      "capacity_kwh": 10.0,
+      "max_charge_kw": 3.5,
+      "max_discharge_kw": 3.5
+    },
+    {
+      "asset_id": "ev_001",
+      "asset_type": "ev",
+      "capacity_kwh": 40.0,
+      "max_charge_kw": 7.2,
+      "max_discharge_kw": 3.6,
+      "v2g_capable": true
+    }
+  ]
 }
 ```
 
+**NOTE**: There is a different flow to register smart meters themselves as mentioned in [registration plan](../auth/registration_plan.md). In here we also include private/public key to validate message payloads. We have to add this to above schema eventually!
+
+**NOTE**: We must also make this as a way to register new storage mediums to our system.
+
 The point of this message is so that anyone listening can figure out what houses exist and what they're capable of, just by listening to MQTT - without the simulator ever needing to tell anyone directly.
+
+
 
 ---
 
@@ -242,7 +278,12 @@ Refer to the `Dspatch Service` topic in the following [document]('../data_pipeli
 
 1. State Transition: The simulator processes the values within its local execution context (simState.ts), modifying the internal State of Charge (SoC) parameters of the battery matrix.
 
-1. Meter Convergence: On the very next 5-second tick loop, the calculated net metrics (net_kw=solar_kw−consumption_kw−battery_charging_kw) naturally converge with the newly applied physical behavior, closing the loop.
+1. Meter Convergence: On the very next 5-second tick loop, the calculated net metrics (net_kw) naturally converge with the newly applied physical behavior, closing the loop.
+
+```
+net_kw = solar_kw - consumption_kw - sum(asset.power_kw for asset in storage_assets where power_kw < 0)
++ sum(asset.power_kw for asset in storage_assets where power_kw > 0)
+```
 
 ---
 
@@ -298,7 +339,7 @@ iot-simulator/
 │   │   ├── House.ts
 │   │   ├── SolarSimulator.ts
 │   │   ├── LoadSimulator.ts          # archetype + scale factor logic
-│   │   ├── BatterySimulator.ts
+│   │   ├── FlexibleAssetSimulator.ts  # Holds asset details (batter, ev)
 │   │   └── SmartMeter.ts            # combines everything into one reading
 │   ├── mqtt/
 │   │   ├── mqttClient.ts            # connecting, reconnecting
