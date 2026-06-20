@@ -35,4 +35,4 @@ Example command / dispatch schedule:
 }
 ```
 
-**NOTE**: This json structure is not finalized and some changes need to be made..
+**NOTE**: This json structure and MQTT topic format is not finalized and some changes need to be made..
