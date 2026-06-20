@@ -110,6 +110,17 @@ Python is more suitable for analytics, simulations, and machine learning compone
 
 ---
 
+## Notes
+
+During the initial project planning stage, the team selected Go as the preferred language for the matching engine due to its simplicity, concurrency support, and fast development speed.
+
+However, during the proposal review and discussion phase, feedback was received regarding the importance of low-latency processing and industry-standard practices in trading systems.
+
+Following additional research into matching engine architectures, performance requirements, and technologies commonly used in financial exchanges, the team decided to move forward with C++ for the matching engine component.
+
+This decision is based on the current understanding of the project requirements and may be revisited if future requirements or technical constraints change.
+
+
 ## Conclusion
 
 C++ was selected as the primary language for the Matching Engine because it provides high performance, predictable latency, direct memory control, and is commonly used in performance-critical trading systems.
