@@ -1,4 +1,4 @@
-## Register Plan
+## Registration Plan
 
 Contains flow of user registration and how iot smart meter can be registered and verified. The idea is taken from [auth.md](../../knowledge_pot/auth.md)
 
