@@ -30,12 +30,6 @@ Designed a modern authentication interface for GridX Energy Trading Platform.
 * Demo credentials information panel
 * Energy trading statistics display
 
-### Screenshot
-
-![alt text](image.png)
-![alt text](image-1.png)
-
----
 
 ## 2. Dashboard / Trading Terminal Mockup
 
@@ -58,10 +52,6 @@ Designed the primary trading interface for peer-to-peer energy transactions.
 * Price configuration
 * Order book visualization
 * Notifications access
-
-### Screenshot
-
-Insert Screenshot: Trading Terminal
 
 ### Status
 
