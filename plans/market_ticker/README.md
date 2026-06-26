@@ -44,7 +44,9 @@ Example of a 15 minute live candle:
 
 ### Example flow of data
 
-This is not finalized and does not include the full view
+This is not finalized and does not include the full deep view.
+
+**NOTE:** All kafka and redis topic/key names mentioned in this diagram are not finalized
 
 
 ```mermaid
