@@ -228,5 +228,3 @@
 | US-5.3 | Documented setup | `README.md` |
 
 ---
-
-*Generated for the IoT Simulation epic (Project PETPG). Map each story to a Jira issue of type "Story" with Epic Link set to the IoT Simulation epic.*
