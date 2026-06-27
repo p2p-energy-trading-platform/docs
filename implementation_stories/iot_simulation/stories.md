@@ -24,8 +24,8 @@
 ---
 
 ### US-1.2 — Clear-sky fallback model
-> **As** the simulation engine, 
-> **I want** to fall back to a clear-sky model when Open-Meteo is unavailable, 
+> **As** the simulation engine,<br>
+> **I want** to fall back to a clear-sky model when Open-Meteo is unavailable,<br>
 > **so that** the simulation keeps running without live weather data.
 
 *Maps to: `src/weather/clearSkyFallback.ts`*
