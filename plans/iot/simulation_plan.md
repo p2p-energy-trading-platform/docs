@@ -115,8 +115,6 @@ Every so often (say, once a minute), each meter also sends a much smaller messag
 
 The point of this message is so that anyone listening can figure out what houses exist and what they're capable of, just by listening to MQTT - without the simulator ever needing to tell anyone directly.
 
-
-
 ---
 
 ## 3. Where the weather comes from
@@ -358,7 +356,57 @@ iot-simulator/
 
 ---
 
-## 9. Things we still need to decide as a team
+## 9. What we need to prove - evaluation targets
+
+This section lists only the targets that the IoT simulator is directly responsible for. These come from the project's evaluation plan which covers the whole system. The targets below are the slice that belongs to this module.
+
+### 9.1 What the evaluators will ask about the simulator
+
+The evaluation panel will check whether the data pipeline can handle real load. The IoT simulator is the thing generating that load - it's the source of all the meter events that flow into the rest of the system. So the simulator needs to produce enough realistic and well-structured data to let the pipeline prove itself.
+
+On top of that, the simulator has its own separate pass, merit, and distinction targets for multi-grid behaviour, explained in section 9.3.
+
+### 9.2 The specific numbers we need to hit
+
+| What is being measured | Target | Notes |
+|---|---|---|
+| Publish frequency | Every 5 seconds per meter, configurable | This is the tick rate agreed in section 4.4 |
+| Minimum concurrent meters | At least 50 MQTT publishers running at the same time | Spread across at least 3 separate grid zones |
+| Minimum grid zones | At least 3, each with its own independent solar curve | Each zone must behave differently and not just be copies of each other |
+| Solar curve realism | The solar output must visibly peak at midday and drop at dusk | This should be visible on the price chart downstream |
+| MQTT delivery guarantee | Zero missed messages with QoS 1 at-least-once delivery confirmed | QoS 1 means the broker confirms every message was received |
+| Zone isolation | A message from Zone A must never appear in Zone B | The simulator enforces this by keeping grids strictly separate |
+| Price coupling | A supply drop must produce a visible price rise within 10 seconds on the chart | The simulator causes this indirectly through the weather signal - see section 5 |
+
+### 9.3 Pass, merit, and distinction levels
+
+These are the three grading levels defined for the IoT multi-grid module.
+
+**Pass** - at least one zone is working and publishing real meter readings.
+
+**Merit** - all three zones are running and behaving independently from each other with different solar curves and different load patterns.
+
+**Distinction** - the price in the different zones visibly diverges on the chart because each zone has genuinely different supply conditions at the same moment.
+
+The distinction target is the most important one to understand. It's not just about having three grids running. It's about demonstrating that different weather (because each grid has a different location in the config) produces different supply, which produces different prices in each zone. This is the whole point of running multiple grids instead of one, and it only works if the indirect reactivity approach from section 5 is implemented correctly.
+
+### 9.4 How we test these targets
+
+**Unit tests** cover the solar curve shape (does it peak at midday, does it drop at dusk), the load archetype curves (do they follow the right daily shape), and the net power calculation (`net_kw = solar_kw - consumption_kw` must always be correct).
+
+**Integration tests** check that a reading published by the simulator over MQTT actually arrives at the broker without being dropped. These run with QoS 1 enabled and confirm every message is acknowledged.
+
+**Load test** starts at least 50 meter instances across 3 grids simultaneously and checks that all of them keep publishing at the correct 5-second interval without falling behind or dropping messages.
+
+**Realism check** runs the simulator for at least one simulated day and inspects the solar curve shape - the output must be clearly higher at midday than at dawn or dusk. This can be done by plotting the data in Grafana or a simple script.
+
+**Zone isolation check** confirms that each grid's readings carry the correct `grid_id` and that no reading from grid01 has a `grid_id` of grid02 or vice versa.
+
+The load testing tool is k6. Unit and integration tests use Jest with ts-jest. The realism and isolation checks can be done with a Grafana dashboard or a short test script.
+
+---
+
+## 10. Things we still need to decide as a team
 
 - Exact tick speed for each meter type - we're assuming 5 seconds for the main reading, but should solar/load update faster internally even if the meter only reports every 5 seconds?
 - How many grids and houses to actually run by default for the demo (this is just a config value, not a code decision).
