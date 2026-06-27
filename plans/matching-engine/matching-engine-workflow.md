@@ -12,43 +12,116 @@ This document explains how the Matching Engine processes incoming orders and gen
 ```mermaid
 flowchart LR
 
-A[Order Service] -->|Publish Order Event| B[(Kafka - orders)]
+%% ===========================
+%% External
+%% ===========================
 
-B --> C[Consume Order Event]
+OS["Order Service"]
+KO[(Kafka<br/>orders)]
 
-subgraph Matching Engine
+OS -->|Publish Order Event| KO
 
-C --> D[Basic Validation]
+%% ===========================
+%% Matching Engine
+%% ===========================
 
-D --> E[Determine Order Type]
+subgraph ME["Matching Engine"]
 
-E -->|Market Order| F[Match Order]
+A["1. Consume Order"]
+B["2. Basic Validation"]
+C{"3. Order Type"}
 
-E -->|Limit Order| G[Check Order Book]
+D["4A. Market Order<br/>Find Best Match"]
 
-G --> H{Matching Order Found?}
+E["4B. Limit Order<br/>Search Order Book"]
 
-H -->|Yes| F
+F{"Match Found?"}
 
-H -->|No| I[Add to Order Book]
+G["5. Generate Trade"]
 
-F --> J[Generate Trade]
+H["6. Update Order Book"]
 
-J --> K[Update Order Book]
+I["7. Update Order Status"]
 
-K --> L[Update Order Status]
+J["8. Publish Trade Event"]
 
-L --> M[Publish Events]
+K["Store Order<br/>in Order Book"]
 
 end
 
-M --> N[(Kafka - trades / order-events)]
+%% ===========================
+%% Downstream
+%% ===========================
 
-N --> O[Market Data Service]
-N --> P[Settlement Service]
-N --> Q[Notification Service]
+KT[(Kafka<br/>trade-events)]
+
+MD["Market Data"]
+SS["Settlement"]
+NS["Notification"]
+
+%% ===========================
+%% Flow
+%% ===========================
+
+KO --> A
+
+A --> B
+
+B --> C
+
+C -->|Market| D
+
+C -->|Limit| E
+
+D --> G
+
+E --> F
+
+F -->|Yes| G
+
+F -->|No| K
+
+K --> I
+
+G --> H
+
+H --> I
+
+I --> J
+
+J --> KT
+
+KT --> MD
+
+KT --> SS
+
+KT --> NS
+
+%% ===========================
+%% Colors
+%% ===========================
+
+style OS fill:#FFE5B4,stroke:#CC8A00,stroke-width:2px
+
+style KO fill:#E9D8FD,stroke:#7C3AED,stroke-width:2px
+style KT fill:#E9D8FD,stroke:#7C3AED,stroke-width:2px
+
+style A fill:#DBEAFE
+style B fill:#DBEAFE
+style C fill:#FEE2E2
+style D fill:#DCFCE7
+style E fill:#DCFCE7
+style F fill:#FEE2E2
+style G fill:#FEF3C7
+style H fill:#EDE9FE
+style I fill:#DBEAFE
+style J fill:#FDE68A
+style K fill:#EDE9FE
+
+style MD fill:#FCE7F3
+style SS fill:#FCE7F3
+style NS fill:#FCE7F3
 ```
-
 ---
 
 ## Flow Explanation
