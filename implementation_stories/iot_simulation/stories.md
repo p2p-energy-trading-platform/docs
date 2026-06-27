@@ -1,7 +1,7 @@
 # IoT Simulation — User Stories
 
-**Epic:** IoT Simulation
-**Project:** PETPG
+**Epic:** IoT Simulation [Space][Space]
+**Project:** PETPG [Space][Space]
 **Repository:** [`p2p-energy-trading-platform/iot-simulation`](https://github.com/p2p-energy-trading-platform/iot-simulation)
 
 > This document breaks the IoT Simulation epic down into component-level user stories, grouped by functional area. Each story maps to a specific part of the `iot-simulation` repository structure and includes acceptance criteria for Jira ticket creation.
