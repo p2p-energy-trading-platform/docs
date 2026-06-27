@@ -9,7 +9,9 @@
 ## 1. Weather Data Integration
 
 ### US-1.1 — Fetch live weather data from Open-Meteo
-**As** the simulation engine, **I want** to fetch live weather data from Open-Meteo for each configured grid, **so that** solar generation reflects real-world conditions.
+**As** the simulation engine, 
+**I want** to fetch live weather data from Open-Meteo for each configured grid, 
+**so that** solar generation reflects real-world conditions.
 
 *Maps to: `src/weather/openMeteoClient.ts`*
 
