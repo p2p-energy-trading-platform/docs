@@ -291,5 +291,10 @@ Publishing events after all matching is complete keeps the matching process cons
 
 ---
 
+## Notes
+
+* The algorithm is based on the Continuous Double Auction (CDA) market model.
+* The implementation will use one Order Book for each Grid Zone.
+* Active Order Books are maintained in memory to achieve low-latency matching.
 
 
