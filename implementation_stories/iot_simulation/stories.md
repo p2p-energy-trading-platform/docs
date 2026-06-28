@@ -6,54 +6,9 @@
 
 ---
 
-## 1. Weather Data Integration
+## 1. Grid & House Domain Modeling
 
-### US-1.1 — Fetch live weather data from Open-Meteo
-> **As** the simulation engine,  
-> **I want** to fetch live weather data from Open-Meteo for each configured grid,  
-> **So that** solar generation reflects real-world conditions.
-
-*Maps to: `src/weather/openMeteoClient.ts`*
-
-**Acceptance Criteria:**
-- One Open-Meteo API call is made per configured grid (not per house).
-- Retrieved data includes at minimum: cloud cover, temperature, and solar irradiance (or equivalent fields needed for solar modeling).
-- API failures (timeout, non-200 response) are caught and do not crash the service.
-- Fetched data is cached/reused appropriately to avoid redundant calls within a single tick interval.
-
----
-
-### US-1.2 — Clear-sky fallback model
-> **As** the simulation engine,<br>
-> **I want** to fall back to a clear-sky model when Open-Meteo is unavailable,<br>
-> **so that** the simulation keeps running without live weather data.
-
-*Maps to: `src/weather/clearSkyFallback.ts`*
-
-**Acceptance Criteria:**
-- Fallback model calculates expected solar irradiance based on time of day, date, and location (no external API dependency).
-- Fallback activates automatically when the live weather call fails or times out.
-- A log/warning is emitted when the system switches to fallback mode.
-
----
-
-### US-1.3 — Unified weather provider interface
-> **As** the simulation engine, <br>
-> **I want** a single weather provider interface that transparently switches between live and fallback data, <br>
-> **so that** downstream components don't need to know which source is active.
-
-*Maps to: `src/weather/weatherProvider.ts`*
-
-**Acceptance Criteria:**
-- Downstream consumers (e.g. `SolarSimulator`) call one consistent method/interface regardless of data source.
-- Switching between live and fallback is invisible to calling code (no conditional branching required outside the provider).
-- Unit tests cover both the live-data path and the fallback path.
-
----
-
-## 2. Grid & House Domain Modeling
-
-### US-2.1 — Define grids and houses via config
+### US-1.1 — Define grids and houses via config
 > **As** a system configurator, <br> 
 > **I want** to define grids and houses via a `grids.yaml` config file, <br>
 > **so that** simulation scenarios can be set up without code changes.
@@ -68,7 +23,7 @@
 
 ---
 
-### US-2.2 — Per-house solar generation simulation
+### US-1.2 — Per-house solar generation simulation
 > **As** the simulation engine, <br>
 > **I want** each house to model its own solar generation based on weather and panel specs, <br>
 > **so that** energy production varies realistically across houses.
@@ -82,7 +37,7 @@
 
 ---
 
-### US-2.3 — Per-house load simulation
+### US-1.3 — Per-house load simulation
 > **As** the simulation engine, <br>
 > **I want** each house to model its own energy consumption using load archetypes and scale factors, <br>
 > **so that** demand patterns reflect different household types.
@@ -96,7 +51,7 @@
 
 ---
 
-### US-2.4 — Flexible asset simulation (battery/EV)
+### US-1.4 — Flexible asset simulation (battery/EV)
 > **As** the simulation engine, <br>
 > **I want** to simulate flexible assets like batteries and EVs per house, <br>
 > **so that** more realistic prosumer behavior (storage/charging) is reflected in the data.
@@ -110,7 +65,7 @@
 
 ---
 
-### US-2.5 — Combined smart meter reading
+### US-1.5 — Combined smart meter reading
 > **As** the simulation engine, <br>
 > **I want** a SmartMeter component that combines solar, load, and flexible asset data into a single reading, <br>
 > **so that** each house produces one coherent telemetry payload.
@@ -121,6 +76,51 @@
 - A single reading per house combines solar generation, load consumption, and flexible asset net effect into one net energy value.
 - Reading output conforms to the defined payload type (see US-4.2).
 - Reading is deterministic given the same inputs (testable/reproducible).
+
+---
+
+## 2. Weather Data Integration
+
+### US-2.1 — Fetch live weather data from Open-Meteo
+> **As** the simulation engine, <br>
+> **I want** to fetch live weather data from Open-Meteo for each configured grid, <br>
+> **So that** solar generation reflects real-world conditions.
+
+*Maps to: `src/weather/openMeteoClient.ts`*
+
+**Acceptance Criteria:**
+- One Open-Meteo API call is made per configured grid (not per house).
+- Retrieved data includes at minimum: cloud cover, temperature, and solar irradiance (or equivalent fields needed for solar modeling).
+- API failures (timeout, non-200 response) are caught and do not crash the service.
+- Fetched data is cached/reused appropriately to avoid redundant calls within a single tick interval.
+
+---
+
+### US-2.2 — Clear-sky fallback model
+> **As** the simulation engine,<br>
+> **I want** to fall back to a clear-sky model when Open-Meteo is unavailable,<br>
+> **so that** the simulation keeps running without live weather data.
+
+*Maps to: `src/weather/clearSkyFallback.ts`*
+
+**Acceptance Criteria:**
+- Fallback model calculates expected solar irradiance based on time of day, date, and location (no external API dependency).
+- Fallback activates automatically when the live weather call fails or times out.
+- A log/warning is emitted when the system switches to fallback mode.
+
+---
+
+### US-2.3 — Unified weather provider interface
+> **As** the simulation engine, <br>
+> **I want** a single weather provider interface that transparently switches between live and fallback data, <br>
+> **so that** downstream components don't need to know which source is active.
+
+*Maps to: `src/weather/weatherProvider.ts`*
+
+**Acceptance Criteria:**
+- Downstream consumers (e.g. `SolarSimulator`) call one consistent method/interface regardless of data source.
+- Switching between live and fallback is invisible to calling code (no conditional branching required outside the provider).
+- Unit tests cover both the live-data path and the fallback path.
 
 ---
 
@@ -212,49 +212,24 @@
 
 ---
 
-### US-5.2 — Lint and type-check enforcement
-> **As** a developer, <br>
-> **I want** lint and type-check scripts (`npm run validate`), <br>
-> **so that** code quality is enforced before merging.
-
-**Acceptance Criteria:**
-- `npm run lint` and `npm run typecheck` both run cleanly on the current `main` branch.
-- `npm run validate` runs both checks in a single command.
-- CI pipeline (`.github/workflows`) runs `validate` on pull requests.
-
----
-
-### US-5.3 — Documented local setup
-> **As** a developer, <br>
-> **I want** a documented setup process (env config, dev/build/start commands), <br>
-> **so that** any team member can run the simulator locally without guidance.
-
-**Acceptance Criteria:**
-- README includes working install, configure (`.env`), dev, test, build, and start instructions.
-- A new team member can go from clone to running instance using only the README.
-- `.env.example` includes all required environment variables with sensible defaults.
-
----
 
 ## Summary Table
 
 | ID | Story | Component |
 |------|--------|-----------|
-| US-1.1 | Fetch live weather data | `weather/openMeteoClient.ts` |
-| US-1.2 | Clear-sky fallback model | `weather/clearSkyFallback.ts` |
-| US-1.3 | Unified weather provider | `weather/weatherProvider.ts` |
-| US-2.1 | Grid/house config | `config/grids.yaml`, `config/loadConfig.ts` |
-| US-2.2 | Solar simulation | `domain/SolarSimulator.ts` |
-| US-2.3 | Load simulation | `domain/LoadSimulator.ts` |
-| US-2.4 | Flexible asset simulation | `domain/FlexibleAssetSimulator.ts` |
-| US-2.5 | Smart meter reading | `domain/SmartMeter.ts` |
+| US-1.1 | Grid/house config | `config/grids.yaml`, `config/loadConfig.ts` |
+| US-1.2 | Solar simulation | `domain/SolarSimulator.ts` |
+| US-1.3 | Load simulation | `domain/LoadSimulator.ts` |
+| US-1.4 | Flexible asset simulation | `domain/FlexibleAssetSimulator.ts` |
+| US-1.5 | Smart meter reading | `domain/SmartMeter.ts` |
+| US-2.1 | Fetch live weather data | `weather/openMeteoClient.ts` |
+| US-2.2 | Clear-sky fallback model | `weather/clearSkyFallback.ts` |
+| US-2.3 | Unified weather provider | `weather/weatherProvider.ts` |
 | US-3.1 | Tick loop scheduler | `scheduler/tickLoop.ts` |
 | US-3.2 | MQTT topic publishing | `mqtt/topics.ts`, `mqtt/mqttClient.ts` |
 | US-3.3 | MQTT reconnection | `mqtt/mqttClient.ts` |
 | US-4.1 | In-memory state | `store/simState.ts` |
 | US-4.2 | Typed schemas | `types/payloads.ts`, `types/config.ts` |
 | US-5.1 | Unit test coverage | `test/` |
-| US-5.2 | Lint/type-check | CI / scripts |
-| US-5.3 | Documented setup | `README.md` |
 
 ---
