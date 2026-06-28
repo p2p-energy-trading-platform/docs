@@ -261,3 +261,18 @@ Resume Kafka Consumer
 
 ---
 
+# Component Summary
+
+| Component          | Responsibility                    |
+| ------------------ | --------------------------------- |
+| Kafka Consumer     | Receive order events from Kafka   |
+| Order Validator    | Validate incoming orders          |
+| Order Book Manager | Manage Grid Zone Order Books      |
+| Order Matcher      | Match buy and sell orders         |
+| Trade Manager      | Create completed trades           |
+| Event Publisher    | Publish events to Kafka           |
+| Recovery Manager   | Restore Order Books after restart |
+
+---
+
+
