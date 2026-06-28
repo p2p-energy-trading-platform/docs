@@ -180,3 +180,7 @@ This structure keeps prices sorted automatically and maintains FIFO order for or
 
 ---
 
+## Notes
+
+* The selected data structure may be optimized after performance testing.
+* Future improvements such as custom price-level structures or lock-free data structures may be evaluated if required.
