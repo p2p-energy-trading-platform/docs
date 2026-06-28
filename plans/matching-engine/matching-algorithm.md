@@ -239,4 +239,57 @@ Publish Order Status Updates
 Publishing events after the matching process keeps the Order Book in a consistent state.
 
 ---
+## Design Decisions
+
+### Decision 1
+
+Match only within the same Grid Zone.
+
+Reason:
+
+Energy trading is limited to participants connected to the same Grid Zone.
+
+---
+
+### Decision 2
+
+Use Price-Time Priority.
+
+Reason:
+
+Provides fair order execution and follows common exchange practices.
+
+---
+
+### Decision 3
+
+Support Partial Fills.
+
+Reason:
+
+Large orders can be matched against multiple smaller orders without waiting for a single matching order.
+
+---
+
+### Decision 4
+
+Process Manual and Automatic Orders using the same algorithm.
+
+Reason:
+
+The Matching Engine only processes valid orders and does not change its behaviour based on how an order was created.
+
+---
+
+### Decision 5
+
+Complete matching before publishing events.
+
+Reason:
+
+Publishing events after all matching is complete keeps the matching process consistent and reduces the chance of exposing incomplete trade information to other services.
+
+---
+
+
 
