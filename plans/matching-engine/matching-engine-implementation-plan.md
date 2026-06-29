@@ -1161,3 +1161,711 @@ Responsibilities:
 The Recovery Manager is active only during startup and recovery.
 
 > **NOTE:** The Kafka Consumer starts only after the Recovery Manager has successfully rebuilt every Order Book.
+
+# 8. Crash Recovery
+
+The Matching Engine stores active Order Books in memory to achieve low-latency order processing.
+
+If the application stops unexpectedly, all in-memory data is lost. The Crash Recovery process restores the Order Books before normal trading resumes.
+
+The Matching Engine does not permanently store orders. Instead, it rebuilds the Order Books using active orders stored by the Order Service.
+
+---
+
+## 8.1 Recovery Objective
+
+The objective of Crash Recovery is to restore the Matching Engine to its previous operational state without losing active orders.
+
+Recovery should:
+
+* Restore every active Order Book.
+* Restore partially filled orders.
+* Resume order processing.
+* Prevent incorrect matching during startup.
+
+---
+
+## 8.2 Recovery Flow
+
+```text
+Matching Engine Starts
+
+↓
+
+Initialize Components
+
+↓
+
+Recovery Manager Starts
+
+↓
+
+Request Active Orders
+
+↓
+
+Order Service
+
+↓
+
+PostgreSQL
+
+↓
+
+Return OPEN Orders
+
+↓
+
+Rebuild Order Books
+
+↓
+
+Recovery Complete
+
+↓
+
+Start Kafka Consumer
+
+↓
+
+Resume Order Matching
+```
+
+The Kafka Consumer starts only after all Order Books have been successfully rebuilt.
+
+---
+
+## 8.3 Recovery Process
+
+The recovery process follows these steps.
+
+### Step 1
+
+The Matching Engine starts.
+
+Internal components are initialized.
+
+No new orders are processed.
+
+---
+
+### Step 2
+
+The Recovery Manager becomes active.
+
+Normal matching remains disabled.
+
+---
+
+### Step 3
+
+The Recovery Manager requests all active orders from the Order Service.
+
+The Matching Engine never connects directly to PostgreSQL.
+
+---
+
+### Step 4
+
+The Order Service retrieves active orders from the database.
+
+Only orders with active statuses are returned.
+
+Returned statuses include:
+
+* OPEN
+* PARTIALLY_FILLED
+
+Orders with the following statuses are ignored:
+
+* FILLED
+* CANCELLED
+* REJECTED
+
+---
+
+### Step 5
+
+Orders are grouped by Grid Zone.
+
+Each order is inserted into its corresponding Buy Book or Sell Book.
+
+When all orders have been restored, the Order Books represent the latest active market.
+
+---
+
+### Step 6
+
+The Kafka Consumer starts.
+
+The Matching Engine begins processing new incoming orders.
+
+---
+
+## 8.4 Recovery States
+
+The Matching Engine moves through several states during startup.
+
+```text
+STARTING
+
+↓
+
+RECOVERING
+
+↓
+
+READY
+
+↓
+
+RUNNING
+```
+
+### STARTING
+
+The application is loading and internal components are initialized.
+
+### RECOVERING
+
+Order Books are rebuilt.
+
+No matching operations are performed.
+
+### READY
+
+Recovery has completed successfully.
+
+All Order Books are available.
+
+### RUNNING
+
+The Kafka Consumer starts.
+
+Normal matching resumes.
+
+---
+
+## 8.5 Restoring Partially Filled Orders
+
+Partially filled orders remain active until their remaining quantity reaches zero.
+
+Example:
+
+```text
+Original Quantity
+
+100
+
+↓
+
+Already Matched
+
+40
+
+↓
+
+Remaining
+
+60
+```
+
+During recovery, only the remaining quantity is restored to the Order Book.
+
+This ensures that previously completed trades are not executed again.
+
+---
+
+## 8.6 Orders Received During Recovery
+
+New orders may arrive while the Matching Engine is recovering.
+
+These orders remain safely stored in Kafka until the consumer starts.
+
+```text
+Recovery Running
+
+↓
+
+Kafka Stores New Orders
+
+↓
+
+Recovery Completed
+
+↓
+
+Kafka Consumer Starts
+
+↓
+
+Process Waiting Orders
+```
+
+No incoming orders are lost during the recovery process.
+
+---
+
+## 8.7 Recovery Failure
+
+If active orders cannot be retrieved from the Order Service:
+
+* Retry the recovery request.
+* Do not start the Kafka Consumer.
+* Do not begin order matching.
+* Continue recovery until successful.
+
+The Matching Engine should never process new orders using an incomplete Order Book.
+
+---
+
+## 8.8 Recovery Checklist
+
+Before entering normal operation, the Matching Engine verifies:
+
+* Internal components initialized.
+* Order Service available.
+* Active orders received.
+* Every Grid Zone Order Book rebuilt.
+* Recovery completed successfully.
+* Kafka Consumer started.
+
+Only after these checks pass does the Matching Engine begin processing new orders.
+
+> **NOTE:** The Order Service remains the owner of persistent order data. The Matching Engine rebuilds its in-memory Order Books during startup and does not directly access the database.
+
+---
+
+# 9. Concurrency Model
+
+The initial implementation uses a simple concurrency model that prioritizes correctness and maintainability.
+
+This approach is suitable for the first production version and can be extended in future releases.
+
+---
+
+## 9.1 Initial Design
+
+The first implementation uses:
+
+* One Matching Engine instance.
+* One matching thread.
+* One Order Book for each Grid Zone.
+* Sequential order processing.
+
+This simplifies synchronization and reduces implementation complexity.
+
+---
+
+## 9.2 Order Processing
+
+Orders are processed one at a time.
+
+```text
+Order 1
+
+↓
+
+Match
+
+↓
+
+Order 2
+
+↓
+
+Match
+
+↓
+
+Order 3
+
+↓
+
+Match
+```
+
+Processing orders sequentially prevents race conditions while ensuring consistent Order Book updates.
+
+---
+
+## 9.3 Grid Zone Independence
+
+Although orders are processed sequentially, each Grid Zone maintains its own independent Order Book.
+
+```text
+Matching Engine
+
+├── Northern Order Book
+├── Central Order Book
+├── Western Order Book
+└── Southern Order Book
+```
+
+This separation makes future parallel processing easier because each Grid Zone can be processed independently.
+
+---
+
+## 9.4 Future Scalability
+
+As trading volume increases, the Matching Engine can be extended without changing the matching algorithm.
+
+Possible improvements include:
+
+* Multiple matching threads.
+* One thread per Grid Zone.
+* Multiple Matching Engine instances.
+* Grid Zone partitioning.
+* Lock-free data structures.
+* Custom memory pools.
+
+These improvements are planned for future versions and are not required for the initial implementation.
+
+---
+
+# 10. Project Structure
+
+> **PLANNING NOTE:** The Matching Engine project structure has not yet been defined. It will be designed and added later during the implementation planning phase.
+
+
+# 11. Testing Strategy
+
+Testing is an important part of the Matching Engine implementation.
+
+The objective is to verify that every component behaves correctly under normal operation, invalid input, high workloads, and unexpected failures.
+
+Testing will be performed throughout the development process rather than only after implementation is complete.
+
+---
+
+## 11.1 Testing Objectives
+
+The testing process aims to verify the following:
+
+* Orders are matched correctly.
+* Price-Time Priority is always maintained.
+* Partial fills are handled correctly.
+* Trades are generated correctly.
+* Order Books remain consistent.
+* Crash Recovery restores the engine successfully.
+* Performance meets the project requirements.
+
+---
+
+## 11.2 Unit Testing
+
+Each module should be tested independently.
+
+The following components require unit tests.
+
+| Component        | Test Focus                        |
+| ---------------- | --------------------------------- |
+| Order            | Object creation and validation    |
+| Trade            | Trade generation                  |
+| PriceLevel       | FIFO order handling               |
+| OrderBook        | Add, remove and update operations |
+| Order Matcher    | Matching logic                    |
+| Recovery Manager | Recovery process                  |
+
+Unit tests should verify both expected behaviour and invalid input.
+
+---
+
+## 11.3 Integration Testing
+
+Integration testing verifies communication between internal components.
+
+The following scenarios should be tested.
+
+* Kafka Consumer receives orders successfully.
+* Orders move correctly through the processing pipeline.
+* Order Book updates after matching.
+* Trade Manager generates trades.
+* Event Publisher publishes completed events.
+* Recovery Manager rebuilds Order Books correctly.
+
+The objective is to ensure all components work together correctly.
+
+---
+
+## 11.4 Functional Testing
+
+Functional testing verifies business requirements.
+
+Example scenarios include:
+
+### Scenario 1
+
+Single BUY matches single SELL.
+
+Expected Result:
+
+One completed trade.
+
+---
+
+### Scenario 2
+
+Large BUY matches multiple SELL orders.
+
+Expected Result:
+
+Multiple trades generated.
+
+---
+
+### Scenario 3
+
+Incoming order has no matching order.
+
+Expected Result:
+
+Order remains in the Order Book.
+
+---
+
+### Scenario 4
+
+Partially matched order.
+
+Expected Result:
+
+Remaining quantity stays active.
+
+---
+
+### Scenario 5
+
+Orders from different Grid Zones.
+
+Expected Result:
+
+No matching occurs.
+
+---
+
+### Scenario 6
+
+Invalid order.
+
+Expected Result:
+
+Order rejected before matching.
+
+---
+
+## 11.5 Performance Testing
+
+Performance testing measures how efficiently the Matching Engine performs under different workloads.
+
+The following metrics should be measured.
+
+* Average matching latency
+* Maximum matching latency
+* Orders processed per second
+* Memory usage
+* CPU utilization
+* Recovery time
+
+These tests help identify performance bottlenecks before deployment.
+
+---
+
+## 11.6 Stress Testing
+
+Stress testing evaluates system behaviour under heavy load.
+
+Example tests include:
+
+* Thousands of active orders.
+* Continuous order submissions.
+* Large Order Books.
+* Multiple Grid Zones with active trading.
+
+The objective is to verify that the Matching Engine remains stable during high trading activity.
+
+---
+
+## 11.7 Recovery Testing
+
+Recovery testing verifies the Crash Recovery process.
+
+Example scenarios include:
+
+* Unexpected application shutdown.
+* Server restart.
+* Recovery after partial order execution.
+* Recovery with multiple Grid Zones.
+
+The expected result is that all active Order Books are rebuilt successfully before matching resumes.
+
+---
+
+## 11.8 Testing Tools
+
+The following tools are planned for testing.
+
+| Tool                   | Purpose             |
+| ---------------------- | ------------------- |
+| Google Test            | Unit testing        |
+| CTest                  | Test execution      |
+| Kafka Test Environment | Integration testing |
+| Benchmark Scripts      | Performance testing |
+
+Additional testing tools may be introduced if required during development.
+
+---
+
+# 12. Performance Targets
+
+The Matching Engine is designed to prioritize low-latency order processing.
+
+Performance targets provide measurable goals that can be evaluated during implementation and testing.
+
+---
+
+## 12.1 Primary Goals
+
+The implementation should achieve:
+
+* Low matching latency.
+* High throughput.
+* Stable memory usage.
+* Reliable crash recovery.
+* Consistent Order Book updates.
+
+---
+
+## 12.2 Target Metrics
+
+| Metric                   | Target                             |
+| ------------------------ | ---------------------------------- |
+| Order Book Storage       | In Memory                          |
+| Average Matching Latency | Less than 10 ms (project target)   |
+| Order Matching Accuracy  | 100%                               |
+| Price-Time Priority      | 100%                               |
+| Grid Zone Isolation      | 100%                               |
+| Crash Recovery           | Restore active orders successfully |
+
+The final performance depends on hardware, workload, and deployment environment.
+
+---
+
+## 12.3 Performance Monitoring
+
+Performance should be monitored throughout development.
+
+Recommended metrics include:
+
+* Matching latency
+* Queue size
+* Active orders
+* Completed trades
+* Memory consumption
+* CPU usage
+* Recovery duration
+
+Monitoring these values helps identify areas for optimization.
+
+---
+
+## 12.4 Optimization Strategy
+
+The Matching Engine should be optimized only after functional correctness has been verified.
+
+Optimization priorities include:
+
+* Reduce memory allocations.
+* Minimize unnecessary object copying.
+* Improve Order Book operations.
+* Reduce matching loop overhead.
+* Profile CPU and memory usage.
+
+Correctness should always take priority over optimization.
+
+> **NOTE:** Premature optimization may increase implementation complexity without providing measurable benefits.
+
+---
+
+# 13. Future Improvements
+
+The initial implementation focuses on delivering a reliable and maintainable Matching Engine.
+
+Several improvements may be introduced in future versions.
+
+---
+
+## 13.1 Additional Order Types
+
+Future versions may support:
+
+* Market Orders
+* Stop Orders
+* Stop-Limit Orders
+* Iceberg Orders
+
+These features are outside the scope of the initial implementation.
+
+---
+
+## 13.2 Multi-threaded Matching
+
+The current implementation uses a single matching thread.
+
+Future versions may introduce:
+
+* Multiple matching threads.
+* Parallel Grid Zone processing.
+* Thread-safe Order Books.
+
+This will improve scalability as trading volume increases.
+
+---
+
+## 13.3 Distributed Matching
+
+As the platform grows, multiple Matching Engine instances may be deployed.
+
+Each instance may process one or more Grid Zones independently.
+
+This approach improves scalability while maintaining Grid Zone isolation.
+
+---
+
+## 13.4 Performance Optimizations
+
+Possible future optimizations include:
+
+* Lock-free data structures.
+* Custom memory pools.
+* Object pooling.
+* SIMD optimizations.
+* Advanced profiling.
+
+These optimizations will be evaluated after the initial implementation is complete.
+
+---
+
+# 14. Open Team Decisions
+
+The following topics require further discussion before implementation begins.
+
+* Maximum supported Grid Zones.
+* Kafka partition strategy.
+* Order identifier generation.
+* Trade identifier generation.
+* Maximum active orders per Grid Zone.
+* Multi-threading approach.
+* Monitoring and logging strategy.
+* Production deployment architecture.
+
+These decisions may evolve as the project progresses.
+
+---
+
+# Notes
+
+* This implementation plan serves as the primary technical reference for the Matching Engine.
+* Detailed design documents provide additional information for specific topics such as the Order Book, Matching Algorithm, Components, and Crash Recovery.
+* Implementation should follow the architecture and responsibilities defined in this document.
+* Any major architectural changes should be reviewed by the project team before implementation begins.
