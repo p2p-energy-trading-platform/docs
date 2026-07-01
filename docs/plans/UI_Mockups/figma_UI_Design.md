@@ -63,7 +63,7 @@ Designed the primary trading interface for peer-to-peer energy transactions.
 
 ## Theme Consistency
 
-* Blue and green energy-focused color palette
+* Black and white energy-focused color palette
 * Consistent typography
 * Uniform component styling
 * Reusable UI patterns
