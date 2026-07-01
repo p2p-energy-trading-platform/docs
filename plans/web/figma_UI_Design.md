@@ -6,7 +6,7 @@ Design and prototype the frontend user interface for the Peer-to-Peer Energy Tra
 
 ## Figma Design
 
-Link: [https://www.figma.com/make/IPtzxeRdQQVvXL676C1mv6/Peer-to-Peer-Energy-Trading-UI?fullscreen=1&t=VChsbLvbIOGTzCeI-1&code-node-id=0-9]
+Link: [figma link](https://www.figma.com/make/IPtzxeRdQQVvXL676C1mv6/Peer-to-Peer-Energy-Trading-UI?fullscreen=1&t=VChsbLvbIOGTzCeI-1&code-node-id=0-9)
 
 ---
 
