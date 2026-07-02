@@ -28,6 +28,12 @@ matching-engine/
 ├── include/  # Contains header files
 │   └── gridx/
 │      └── matching/
+|          |
+|          ├── common/
+|          │   ├── Logger.hpp
+|          |   ├── Types.hpp
+|          │   └── Utils.hpp
+|          |
 │          ├── domain/
 │          │   ├── Order.hpp
 │          │   ├── Trade.hpp
@@ -58,8 +64,8 @@ matching-engine/
 │          │   └── GridTopologyCache.hpp
 │          │
 │          └── ports/
-│              ├── EventConsumer.hpp
-│              ├── EventPublisher.hpp
+│              ├── OrderEventConsumer.hpp
+│              ├── TradeEventPublisher.hpp
 │              └── RecoveryClient.hpp
 │
 ├── src/ # Contains implementations of above header files
@@ -67,14 +73,14 @@ matching-engine/
 │   ├── domain/
 │   ├── orderbook/
 │   ├── matcher/
-│   ├── application/
+│   ├── engine/
 │   ├── config/
 │   └── adapters/
 │       ├── kafka/
 │       |   ├── KafkaOrderConsumer.cpp
 │       │   ├── KafkaEventPublisher.cpp
 │       │   └── KafkaConfigConsumer.cpp
-│       ├── serialization/
+│       ├── codec/
 │       │   ├── ProtobufOrderCodec.cpp
 │       │   ├── ProtobufTradeCodec.cpp
 │       │   ├── ProtobufGridRuleCodec.cpp
