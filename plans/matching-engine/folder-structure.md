@@ -32,7 +32,7 @@ matching-engine/
 │          │   ├── Order.hpp
 │          │   ├── Trade.hpp
 │          │   ├── MarketId.hpp
-│          │   ├── Money.hpp
+│          │   ├── Price.hpp
 │          │   └── Quantity.hpp
 │          │
 │          ├── orderbook/
@@ -44,9 +44,9 @@ matching-engine/
 │          ├── matcher/
 │          │   ├── Matcher.hpp
 │          │   ├── MatchingResult.hpp
-│          │   └── MatchingPolicy.hpp
+│          │   └── MatchingAlgorithm.hpp
 │          │
-│          ├── application/
+│          ├── engine/
 │          │   ├── MatchingEngine.hpp
 │          │   ├── OrderProcessor.hpp
 │          │   ├── MarketRouter.hpp
