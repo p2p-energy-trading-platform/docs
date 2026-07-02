@@ -1525,7 +1525,104 @@ These improvements are planned for future versions and are not required for the 
 
 # 10. Project Structure
 
-> **PLANNING NOTE:** The Matching Engine project structure has not yet been defined. It will be designed and added later during the implementation planning phase.
+The following folder structure can be used for matching engine
+
+
+```
+matching-engine/
+├── CMakeLists.txt
+├── CMakePresets.json
+├── conanfile.txt
+├── README.md
+├── .clang-format
+├── .clang-tidy
+├── .gitignore
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── include/  # Contains header files
+│   └── gridx/
+│      └── matching/
+|          |
+|          ├── common/
+|          │   ├── Logger.hpp
+|          |   ├── Types.hpp
+|          │   └── Utils.hpp
+|          |
+│          ├── domain/
+│          │   ├── Order.hpp
+│          │   ├── Trade.hpp
+│          │   ├── MarketId.hpp
+│          │   ├── Price.hpp
+│          │   └── Quantity.hpp
+│          │
+│          ├── orderbook/
+│          │   ├── OrderBook.hpp
+│          │   ├── OrderBookSide.hpp
+│          │   ├── PriceLevel.hpp
+│          │   └── OrderBookManager.hpp
+│          │
+│          ├── matcher/
+│          │   ├── Matcher.hpp
+│          │   ├── MatchingResult.hpp
+│          │   └── MatchingAlgorithm.hpp
+│          │
+│          ├── engine/
+│          │   ├── MatchingEngine.hpp
+│          │   ├── OrderProcessor.hpp
+│          │   ├── MarketRouter.hpp
+│          │   └── RecoveryManager.hpp
+│          │
+│          ├── config/
+│          │   ├── MarketConfigCache.hpp
+│          │   ├── TariffCache.hpp
+│          │   └── GridTopologyCache.hpp
+│          │
+│          └── ports/
+│              ├── OrderEventConsumer.hpp
+│              ├── TradeEventPublisher.hpp
+│              └── RecoveryClient.hpp
+│
+├── src/ # Contains implementations of above header files
+│   ├── main.cpp
+│   ├── domain/
+│   ├── orderbook/
+│   ├── matcher/
+│   ├── engine/
+│   ├── config/
+│   └── adapters/
+│       ├── kafka/
+│       |   ├── KafkaOrderConsumer.cpp
+│       │   ├── KafkaEventPublisher.cpp
+│       │   └── KafkaConfigConsumer.cpp
+│       ├── codec/
+│       │   ├── ProtobufOrderCodec.cpp
+│       │   ├── ProtobufTradeCodec.cpp
+│       │   ├── ProtobufGridRuleCodec.cpp
+│       │   └── OrderEventMapper.cpp
+│       └── recovery/
+│
+├── tests/
+│   ├── unit/
+│   │   ├── OrderBookTest.cpp
+│   │   ├── MatcherTest.cpp
+│   │   └── TariffCacheTest.cpp
+│   │
+│   ├── integration/
+│   │   ├── KafkaFlowTest.cpp
+│   │   └── RecoveryTest.cpp
+│   │
+│   └── benchmark/
+│       ├── OrderBookBenchmark.cpp
+│       └── MatchingBenchmark.cpp
+│
+├── scripts/
+│   ├── run-local.sh
+│   └── benchmark.sh
+├── Dockerfile
+└── docker-compose.yml
+```
 
 
 # 11. Testing Strategy
