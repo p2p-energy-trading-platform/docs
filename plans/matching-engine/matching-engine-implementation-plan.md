@@ -33,7 +33,10 @@ The Matching Engine performs the following tasks:
 * Receive new order events from Kafka.
 * Validate fields required for matching.
 * Maintain active Order Books in memory.
-* Keep one Order Book for each Grid Zone.
+* Keep one Market Book for each 30-minute delivery slot and product type.
+* Keep Zone Order Books inside each Market Book.
+* Support cross-zone matching when grid transfer rules allow it.
+* Expire unmatched order quantity when the 30-minute delivery slot ends.
 * Match BUY and SELL orders.
 * Apply Price-Time Priority.
 * Support partial order execution.
@@ -149,24 +152,31 @@ Persistent storage remains the responsibility of the Order Service.
 
 ---
 
-## 3.3 Grid Zone Isolation
+## 3.3 Market Books and Cross-Zone Matching
 
-Energy trading in GridX only occurs between participants connected to the same Grid Zone.
+Energy trading in GridX is organized by delivery time.
 
-For this reason, each Grid Zone owns its own Order Book.
+Each order belongs to a fixed 30-minute delivery slot. The Matching Engine maintains one Market Book for each delivery slot and product type.
 
-```
+For the initial implementation, the only supported product type is ENERGY.
+
+```text
 Matching Engine
 
-├── Northern Order Book
-├── Central Order Book
-├── Western Order Book
-└── Southern Order Book
+├── Market Book: ENERGY / 10:00–10:30
+│   ├── Northern Zone Order Book
+│   ├── Central Zone Order Book
+│   └── Western Zone Order Book
+│
+├── Market Book: ENERGY / 10:30–11:00
+│   ├── Northern Zone Order Book
+│   ├── Central Zone Order Book
+│   └── Western Zone Order Book
 ```
 
-Orders from different Grid Zones are never matched together.
+Orders may match across grid zones only when the Grid Transfer Policy allows transfer between the seller's grid zone and the buyer's grid zone.
 
-This design also allows future horizontal scaling by assigning different Grid Zones to different Matching Engine instances.
+Cross-zone matching includes grid fees in the effective price calculation.
 
 ---
 
@@ -212,30 +222,31 @@ Trading continues as long as new orders are received.
 
 ---
 
-## 3.6 Price-Time Priority
+## 3.6 Effective-Price-Time Priority
 
-Price-Time Priority is the primary matching rule used throughout the engine.
+Effective-Price-Time Priority is the primary matching rule used throughout the engine.
 
-Orders are always matched using the following priority:
+For same-zone matching, the grid fee is zero.
 
-1. Best Price
-2. Earliest Timestamp
+For cross-zone matching, the grid fee is included in the effective price.
 
-Example:
+For a BUY order:
 
-```
-Price 25
-
-Order A   10:00
-
-Order B   10:03
-
-Order C   10:05
+```text
+effective_ask = seller_price + grid_fee
 ```
 
-Order A is matched first because it arrived earlier.
+For a SELL order:
 
-This rule guarantees fair order execution.
+```text
+effective_bid = buyer_limit_price - grid_fee
+```
+
+Orders are matched using the following priority:
+
+1. Best effective price
+1. Earliest timestamp
+1. Same-zone match if effective price and timestamp are equal
 
 ---
 
@@ -275,7 +286,7 @@ The Matching Engine does not permanently store active orders.
 
 If the application stops, the in-memory Order Books are lost.
 
-After restarting, the Recovery Manager requests all active orders from the Order Service and rebuilds every Grid Zone Order Book before matching resumes.
+After restarting, the Recovery Manager requests all active non-expired orders from the Order Service and rebuilds every Market Book and its internal Zone Order Books before matching resumes.
 
 This allows the Matching Engine to remain lightweight while still recovering safely from unexpected failures.
 
@@ -290,7 +301,9 @@ Several design decisions have been made specifically to reduce matching latency.
 These include:
 
 * In-memory Order Books
-* One Order Book per Grid Zone
+* One Market Book per 30-minute delivery slot
+* Zone Order Books inside each Market Book
+* In-memory Grid Transfer Cache for cross-zone matching
 * `std::map` for maintaining sorted price levels
 * `std::deque` for FIFO order handling
 * No database access during matching
@@ -367,35 +380,39 @@ The Order Validator performs lightweight checks before the order enters the matc
 
 Validation includes:
 
-* Grid Zone exists
+* Grid zone exists
 * Supported order type
 * Valid quantity
 * Valid price
+* Valid delivery slot
+* Delivery slot follows the configured 30-minute slot duration
+* Order is not expired
 * Required fields present
 
 If validation fails, the order is rejected and no matching is performed.
 
 ---
 
-## 4.3 Select Grid Zone
+## 4.3 Select Market Book
 
-Every order belongs to one Grid Zone.
+Every order belongs to one Market Book.
 
-Example:
+A Market Book is identified by:
 
 ```text
-Northern
-
-Central
-
-Western
+delivery_slot_start + product_type
 ```
 
-The Matching Engine selects the corresponding Order Book for that Grid Zone.
+For the current implementation:
 
-Orders are never matched across different Grid Zones.
+```text
+product_type = ENERGY
+slot_duration = 30 minutes
+```
 
-This rule ensures local energy trading within the same distribution network.
+The Matching Engine selects the Market Book for the order's delivery slot.
+
+The order's grid zone is still used as the participant location. It determines which Zone Order Book stores the order and which grid transfer rules apply during cross-zone matching
 
 ---
 
@@ -431,11 +448,14 @@ The Order Matcher applies the GridX matching algorithm.
 
 Matching follows these rules:
 
-* Same Grid Zone
-* Price-Time Priority
+* Same delivery slot
+* Same product type
+* Cross-zone transfer allowed by Grid Transfer Policy
+* Effective-Price-Time Priority
 * Continuous Double Auction (CDA)
 * Partial Fill support
 * Multiple trade generation
+* Order expiry at the end of the delivery slot
 
 The matcher continues until:
 
@@ -478,32 +498,36 @@ The Trade Manager creates Trade objects only after a successful match.
 
 ---
 
-## 4.7 Update Order Book
+## 4.7 Update Market Book
 
-After matching completes, the Order Book is updated.
+After matching completes, the selected Market Book is updated.
 
 Possible updates include:
 
-* Remove completed orders.
+* Remove fully filled orders.
 * Update remaining quantities.
-* Store partially matched orders.
-* Insert unmatched limit orders.
+* Store partially filled orders.
+* Insert unmatched limit order quantity into the correct Zone Order Book.
+* Remove expired orders when their delivery slot ends.
 
-The Order Book always represents the current active market.
+The Market Book always represents the current active market for one delivery slot and product type.
 
 ---
 
 ## 4.8 Publish Events
 
-After all matching is completed, the Matching Engine publishes the results.
+After all matching and book updates are completed, the Matching Engine publishes the results.
 
 Events may include:
 
 * Trade Executed
 * Order Updated
 * Order Filled
+* Order Partially Filled
+* Order Expired
+* Order Cancelled
 
-Publishing occurs only after the matching operation is complete.
+Publishing occurs only after the matching operation and Market Book update are complete.
 
 This prevents other services from observing incomplete matching results.
 
@@ -511,47 +535,81 @@ This prevents other services from observing incomplete matching results.
 
 # 5. Order Book Implementation
 
-The Order Book is the most important data structure inside the Matching Engine.
+The Market Book is the most important in-memory data structure inside the Matching Engine.
 
-It stores all active orders currently waiting to be matched.
+It stores all active orders for one product type and one delivery slot.
 
-The Matching Algorithm reads and updates the Order Book continuously while the engine is running.
+The Matching Algorithm reads and updates Market Books continuously while the engine is running.
 
-Because matching speed directly depends on the Order Book, its implementation is designed for fast in-memory access.
+Because matching speed directly depends on these structures, the implementation is designed for fast in-memory access.
 
 ---
 
-## 5.1 One Order Book per Grid Zone
+## 5.1 One Market Book per Delivery Slot
 
-Each Grid Zone maintains an independent Order Book.
+Each 30-minute delivery slot has its own Market Book.
+
+A Market Book contains all active orders for one product type and one delivery period.
+
+For the initial version:
+
+```text
+Product Type: ENERGY
+Slot Duration: 30 minutes
+```
+
+Each Market Book contains separate Zone Order Books so that orders can be organized by participant grid zone.
+
+Example:
 
 ```text
 Matching Engine
 
-├── Northern Order Book
-
-├── Central Order Book
-
-├── Western Order Book
-
-└── Southern Order Book
+├── Market Book: ENERGY / 10:00–10:30
+│   ├── Zone A Order Book
+│   ├── Zone B Order Book
+│   └── Zone C Order Book
+│
+├── Market Book: ENERGY / 10:30–11:00
+│   ├── Zone A Order Book
+│   ├── Zone B Order Book
+│   └── Zone C Order Book
 ```
 
-This design ensures that only participants within the same Grid Zone can trade with each other.
-
-It also allows future horizontal scaling by assigning different Grid Zones to different Matching Engine instances.
+Orders are matched only inside the same Market Book.
 
 ---
 
-## 5.2 Buy Book and Sell Book
+## 5.2 Zone Order Book
+
+Each Market Book contains one Zone Order Book for each grid zone that has active orders in that delivery slot.
+
+```text
+Market Book
+
+├── Zone A Order Book
+│   ├── Buy Book
+│   └── Sell Book
+│
+├── Zone B Order Book
+│   ├── Buy Book
+│   └── Sell Book
+```
+
+A Zone Order Book stores orders submitted by participants from that grid zone.
+
+This structure keeps orders organized by location while still allowing the matcher to evaluate valid cross-zone matches inside the same Market Book.
+
+---
+
+## 5.3 Buy Book and Sell Book
 
 Each Order Book contains two independent collections.
 
 ```text
-Order Book
+Zone Order Book
 
 ├── Buy Book
-
 └── Sell Book
 ```
 
@@ -559,7 +617,7 @@ The Buy Book stores active BUY orders.
 
 The Sell Book stores active SELL orders.
 
-Keeping both sides separate simplifies the matching process.
+Keeping both sides separate simplifies opposite-side searching during matching.
 
 ---
 
@@ -583,11 +641,30 @@ Each price level stores its orders inside a `std::deque`.
 
 The deque preserves FIFO order for orders with the same price.
 
-Together these two structures naturally support Price-Time Priority.
+Together these two structures support ordered price levels and arrival-order processing within each price level.
+
+The complete structure can be represented as:
+
+```cpp
+struct MarketId {
+    int64_t delivery_slot_start;
+    ProductType product_type;
+};
+
+struct ZoneOrderBook {
+    OrderBookSide buy_book;
+    OrderBookSide sell_book;
+};
+
+struct MarketBook {
+    MarketId market_id;
+    std::unordered_map<GridZoneId, ZoneOrderBook> zone_books;
+};
+```
 
 ---
 
-## 5.4 Price Levels
+## 5.5 Price Levels
 
 Instead of storing every order in one large list, orders are grouped by price.
 
@@ -609,37 +686,21 @@ This makes matching faster because the engine works with one price level at a ti
 
 ---
 
-## 5.5 Order Priority
+## 5.6 Order Priority Inside a Price Level
 
-Orders are selected using two levels of priority.
-
-First:
-
-```text
-Best Price
-```
-
-Then:
-
-```text
-Earliest Arrival
-```
-
-This is known as Price-Time Priority.
+Inside a price level, orders are processed by arrival order.
 
 Example:
 
-```text
+```
 Price 25
 
 Order A   10:00
-
 Order B   10:02
-
 Order C   10:05
 ```
 
-Matching order:
+Processing order:
 
 ```text
 Order A
@@ -653,9 +714,13 @@ Order B
 Order C
 ```
 
+This preserves fairness among orders with the same price inside the same price level.
+
+Overall match selection is handled by the matching algorithm.
+
 ---
 
-## 5.6 In-Memory Storage
+## 5.7 In-Memory Storage
 
 The active Order Book exists only in memory.
 
@@ -666,7 +731,7 @@ RAM
 
 ↓
 
-Order Books
+Market Books
 
 ↓
 
@@ -679,32 +744,43 @@ This separation reduces latency and keeps the Matching Engine focused only on or
 
 ---
 
-## 5.7 Rebuilding the Order Book
+## 5.8 Rebuilding the Market Books
 
-If the Matching Engine restarts, the in-memory Order Books are rebuilt.
+If the Matching Engine restarts, the in-memory Market Books are rebuilt.
 
-The Recovery Manager requests active orders from the Order Service.
+The Recovery Manager requests active, non-expired orders from the Order Service.
 
-Each returned order is inserted into its corresponding Grid Zone Order Book.
+Each returned order is inserted into the correct Market Book based on
+
+```text
+delivery_slot_start + product_type
+```
+
+Inside that Market Book, the order is inserted into the correct Zone Order Book based on the order's grid zone.
 
 After rebuilding is complete, normal order processing resumes.
 
 This approach combines fast in-memory matching with reliable recovery after unexpected failures.
 
+---
 
 # 6. Matching Algorithm Implementation
 
 The Matching Engine follows a Continuous Double Auction (CDA) market model.
 
-Orders are processed immediately after they are received. If a matching order already exists, a trade is executed immediately. Otherwise, the order is stored in the Order Book until a suitable matching order becomes available.
+Orders are processed immediately after they are received. If a suitable matching order already exists inside the selected Market Book, a trade is executed immediately. Otherwise, the remaining quantity is stored in the correct Zone Order Book until another suitable order arrives or the delivery slot expires.
 
 The matching algorithm is based on the following rules:
 
-* Match only within the same Grid Zone.
-* Apply Price-Time Priority.
+* Match only within the same 30-minute delivery slot.
+* Match only within the same product type.
+* Use the selected Market Book for matching.
+* Search same-zone and eligible cross-zone opposite orders.
+* Apply Effective-Price-Time Priority.
 * Support partial fills.
 * Support multiple trades from a single order.
 * Support Limit Orders.
+* Expire unmatched quantity when the delivery slot ends.
 * Complete matching before publishing events.
 
 ---
@@ -718,19 +794,19 @@ Receive Order
 
 ↓
 
-Select Grid Zone
+Validate Delivery Slot
 
 ↓
 
-Load Order Book
+Select Market Book
 
 ↓
 
-Select Opposite Book
+Load Zone Order Books
 
 ↓
 
-Search Matching Orders
+Search Eligible Opposite Orders
 
 ↓
 
@@ -738,14 +814,18 @@ Generate Trades
 
 ↓
 
-Update Order Book
+Update Market Book
 
 ↓
 
 Publish Events
 ```
 
-The matching process continues until the incoming order is fully matched or no suitable orders remain.
+The matching process continues until:
+
+* the incoming order is fully matched,
+* no suitable orders remain, or
+* the order is no longer valid for the delivery slot.
 
 ---
 
@@ -753,27 +833,21 @@ The matching process continues until the incoming order is fully matched or no s
 
 Before matching begins, the Matching Engine identifies the Grid Zone associated with the incoming order.
 
-Only orders within the same Grid Zone are considered.
+Only orders within the same Market Book are considered.
 
-Example:
+Orders from different grid zones may be considered if:
 
-```text
-Northern BUY
-
-↓
-
-Northern Sell Book
-```
-
-Orders from different Grid Zones are never matched.
+* They are in the same 30-minute delivery slot
+* They have the same product type
+* Grid Transfer Policy allows transfer between the seller zone and buyer zone
 
 This rule reflects the GridX business requirement that energy can only be traded within the same local grid.
 
 ---
 
-## 6.3 Selecting the Opposite Order Book
+## 6.3 Selecting Eligible Opposite Orders
 
-The Matching Engine always searches the opposite side of the market.
+The Matching Engine always searches the opposite side of the selected MarketBook.
 
 For a BUY order:
 
@@ -782,7 +856,7 @@ BUY Order
 
 ↓
 
-Search Sell Book
+Search SELL orders inside the same MarketBook
 ```
 
 For a SELL order:
@@ -792,74 +866,167 @@ SELL Order
 
 ↓
 
-Search Buy Book
+Search BUY orders inside the same MarketBook
 ```
 
-Searching only the opposite side reduces unnecessary processing.
+The search may include:
+
+* Orders from the same grid zone
+* Orders from other grid zones if Grid Transfer Policy allows transfer
+
+The engine does not search orders from other delivery slots.
+
+Searching only the opposite side of the selected MarketBook reduces unnecessary processing while still allowing valid cross-zone matches.
 
 ---
 
-## 6.4 Price Matching
+## 6.4 Effective Price Matching
 
-The Matching Engine checks whether prices satisfy the matching rules.
+The Matching Engine checks whether prices satisfy the matching rules using effective price.
 
-BUY orders:
-
-```text
-BUY Price >= SELL Price
-```
-
-SELL orders:
+For same-zone trades:
 
 ```text
-SELL Price <= BUY Price
+grid_fee = 0
 ```
 
-If these conditions are not satisfied, matching stops and the remaining order is stored in the Order Book.
+For cross-zone trades, the grid fee is taken from the Grid Transfer Cache.
+
+For BUY orders:
+
+```text
+seller_price + grid_fee <= buyer_limit_price
+```
+
+This means the buyer's maximum price must cover both the seller's energy price and the grid fee.
+
+For SELL orders:
+
+```text
+seller_limit_price <= buyer_limit_price - grid_fee
+```
+
+This means the seller's minimum acceptable price must be less than or equal to the buyer's effective bid after subtracting the grid fee.
+
+If these conditions are not satisfied, the candidate order is skipped.
+
+If no valid matching order exists, the remaining quantity of the incoming limit order is stored in the correct Zone Order Book inside the selected MarketBook.
+
+The order remains active only until the end of its 30-minute delivery slot. If it is not fully matched before the delivery slot ends, the remaining quantity expires.
 
 ---
 
-## 6.5 Price-Time Priority
+## 6.5 Effective-Price-Time Priority
 
-When multiple matching orders exist, the Matching Engine applies Price-Time Priority.
+When multiple matching orders exist, the Matching Engine applies Effective-Price-Time Priority.
 
-Priority is determined using two rules.
+This is required because cross-zone trades may include grid fees. Therefore, the engine compares orders using the effective price rather than the raw order price alone.
+
+For same-zone trades:
+
+```text
+grid_fee = 0
+```
+
+For cross-zone trades, the grid fee is taken from the Grid Transfer Cache.
 
 ### Rule 1
 
-Best price always has the highest priority.
+Orders must belong to the same Market Book.
+
+A Market Book is identified by:
+
+```text
+delivery_slot_start + product_type
+```
+
+The slot duration and product type is as below. ENERGY is the only product type:
+
+```text
+slot_duration = 30 minutes
+product_type = ENERGY
+```
 
 ### Rule 2
 
-If multiple orders have the same price, the earliest order is matched first.
+Cross-zone matching is allowed only when the Grid Transfer Policy allows energy transfer between the seller's grid zone and the buyer's grid zone.
 
-Example:
+### Rule 3
 
-```text
-Price 25
+Best effective price has the highest priority.
 
-Order A   10:00
-
-Order B   10:03
-
-Order C   10:08
-```
-
-Matching order:
+For an incoming BUY order, the engine compares seller orders using:
 
 ```text
-Order A
-
-↓
-
-Order B
-
-↓
-
-Order C
+effective_ask = seller_price + grid_fee
 ```
 
-This approach provides fair and predictable order execution.
+The BUY order can match when:
+
+```text
+effective_ask <= buyer_limit_price
+```
+
+The lowest effective ask has priority.
+
+For an incoming SELL order, the engine compares buyer orders using:
+
+```text
+effective_bid = buyer_limit_price - grid_fee
+```
+
+The SELL order can match when:
+
+```text
+seller_limit_price <= effective_bid
+```
+
+The highest effective bid has priority.
+
+### Rule 4
+
+If multiple orders have the same effective price, the earliest order is matched first.
+
+### Rule 5
+
+If effective price and timestamp are both equal, same-zone matching is preferred.
+
+Example for an incoming BUY order:
+
+```text
+Buyer Zone: Zone A
+Buyer Limit Price: AED 0.50/kWh
+
+Seller 1:
+Zone A
+Seller Price: AED 0.47/kWh
+Grid Fee: AED 0.00/kWh
+Effective Ask: AED 0.47/kWh
+
+Seller 2:
+Zone B
+Seller Price: AED 0.45/kWh
+Grid Fee: AED 0.04/kWh
+Effective Ask: AED 0.49/kWh
+
+Seller 3:
+Zone C
+Seller Price: AED 0.43/kWh
+Grid Fee: AED 0.10/kWh
+Effective Ask: AED 0.53/kWh
+```
+
+Matching result:
+
+```text
+Seller 1 matches first because effective ask is RM 0.47/kWh.
+
+Seller 2 is eligible but has a higher effective ask of RM 0.49/kWh.
+
+Seller 3 is not eligible because RM 0.53/kWh is greater than the buyer's limit price of RM 0.50/kWh.
+```
+
+This approach provides fair and predictable order execution while supporting cross-zone grid fees.
 
 ---
 
@@ -1086,11 +1253,12 @@ Business validations are not repeated because they have already been completed b
 
 ## 7.3 Order Book Manager
 
-The Order Book Manager maintains every Grid Zone Order Book.
+The Order Book Manager maintains every Market Book and the Zone Order Books inside each Market Book.
 
 Responsibilities:
 
-* Load Grid Zone Order Books.
+* Load the correct Market Book by delivery slot and product type.
+* Load Zone Order Books inside the selected Market Book.
 * Add orders.
 * Remove orders.
 * Update remaining quantities.
@@ -1108,9 +1276,10 @@ The Order Matcher performs the actual matching process.
 
 Responsibilities:
 
-* Select the correct Grid Zone.
-* Search the opposite Order Book.
-* Apply Price-Time Priority.
+* Select the correct Market Book.
+* Search eligible same-zone and cross-zone opposite orders.
+* Apply Grid Transfer Policy.
+* Apply Effective-Price-Time Priority.
 * Handle partial fills.
 * Generate Matching Results.
 
@@ -1636,7 +1805,7 @@ Remaining quantity stays active.
 
 ### Scenario 5
 
-Orders from different Grid Zones.
+Orders from different Grid Zones where transfer is not allowed.
 
 Expected Result:
 
@@ -1645,6 +1814,26 @@ No matching occurs.
 ---
 
 ### Scenario 6
+
+Orders from different Grid Zones where transfer is allowed and effective price condition is satisfied.
+
+Expected Result:
+
+A trade is generated with buyer grid zone, seller grid zone, energy price, grid fee, buyer total price, and grid rule version.
+
+---
+
+### Scenario 7
+
+Order remains unmatched until its 30-minute delivery slot ends.
+
+Expected Result:
+
+The remaining quantity expires and the order status becomes EXPIRED.
+
+---
+
+### Scenario 8
 
 Invalid order.
 
@@ -1744,7 +1933,9 @@ The implementation should achieve:
 | Average Matching Latency | Less than 10 ms (project target)   |
 | Order Matching Accuracy  | 100%                               |
 | Price-Time Priority      | 100%                               |
-| Grid Zone Isolation      | 100%                               |
+| Delivery Slot Isolation  | 100%                               |
+| Grid Transfer Rule Accuracy | 100%                            |
+| Order Expiry Accuracy    | 100%                               |
 | Crash Recovery           | Restore active orders successfully |
 
 The final performance depends on hardware, workload, and deployment environment.

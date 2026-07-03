@@ -13,10 +13,13 @@ This matching algorithm is based on the Continuous Double Auction (CDA) market m
 The matching algorithm follows these principles:
 
 * Continuous order matching
-* Match only within the same Grid Zone
-* Price-Time Priority
+* Match only within the same 30-minute delivery slot
+* Allow cross-zone matching when Grid Transfer Policy allows it
+* Include grid fees in effective price calculation
+* Effective-Price-Time Priority
 * Support partial fills
 * Support multiple trades from a single order
+* Expire unmatched quantity when the delivery slot ends
 * Process both manual and automatic orders using the same logic
 
 ---
@@ -27,13 +30,16 @@ The matching algorithm follows these principles:
 Receive Order
       │
       ▼
-Select Grid Zone
+Validate Delivery Slot
       │
       ▼
-Load Grid Zone Order Book
+Select Market Book
       │
       ▼
-Select Opposite Order Book
+Load Zone Order Books
+      │
+      ▼
+Find Eligible Same-Zone and Cross-Zone Opposite Orders
       │
       ▼
 Find Matching Orders
@@ -61,41 +67,41 @@ The source of the order does not affect the matching process.
 
 ---
 
-## Step 2 - Select Grid Zone
+## Step 2 - Select Market Book
 
-Each order contains a Grid Zone.
+Each order contains a delivery slot and product type.
 
-Example:
+For the initial implementation:
 
 ```text
-Northern
-Western
-Central
+Product Type: ENERGY
+Delivery Slot Duration: 30 minutes
 ```
 
-The Matching Engine selects the correct Order Book for that Grid Zone.
+The Matching Engine selects the Market Book using:
 
-Orders are only matched within the same Grid Zone.
+```text
+delivery_slot_start + product_type
+```
+
+Orders are matched only within the same Market Book.
+
+The order's grid zone is still used, but it represents the participant's location and is used for cross-zone transfer rules and grid fee calculation.
 
 ---
 
-## Step 3 - Load the Opposite Order Book
+## Step 3 - Load Eligible Opposite Orders
 
-The engine selects the opposite side of the market.
+The engine searches the opposite side of the selected Market Book.
 
-Examples:
+For a BUY order, the engine searches SELL orders.
 
-BUY Order
+For a SELL order, the engine searches BUY orders.
 
-↓
+The search may include:
 
-Search Sell Order Book
-
-SELL Order
-
-↓
-
-Search Buy Order Book
+* Same-zone orders
+* Cross-zone orders where transfer is allowed by Grid Transfer Policy
 
 ---
 
@@ -108,14 +114,23 @@ Matching conditions:
 For BUY orders:
 
 ```text
-BUY Price >= SELL Price
+seller_price + grid_fee <= buyer_limit_price
 ```
 
 For SELL orders:
 
 ```text
-SELL Price <= BUY Price
+seller_limit_price <= buyer_limit_price - grid_fee
 ```
+
+For same-zone trades:
+
+```text
+grid_fee = 0
+```
+
+For cross-zone trades, the grid fee is taken from the Grid Transfer Cache.
+
 
 If no matching order exists:
 
@@ -124,28 +139,27 @@ If no matching order exists:
 
 ---
 
-## Step 5 - Apply Price-Time Priority
+## Step 5 - Apply Effective-Price-Time Priority
 
-When multiple matching orders are available, the engine follows Price-Time Priority.
+When multiple matching orders are available, the engine follows Effective-Price-Time Priority.
 
 Priority is determined by:
 
-1. Best Price
-2. Earliest Timestamp
+1. Best effective price
+2. Earliest timestamp
+3. Same-zone match if effective price and timestamp are equal
 
-Example:
+For an incoming `BUY` order, the best match is the lowest effective ask:
 
 ```text
-Price 25
-
-Order A - 10:00
-
-Order B - 10:05
-
-Order C - 10:10
+effective_ask = seller_price + grid_fee
 ```
 
-Order A is matched first because it arrived earlier.
+For an incoming `SELL` order, the best match is the highest effective bid:
+
+```text
+effective_bid = buyer_limit_price - grid_fee
+```
 
 ---
 
@@ -182,16 +196,19 @@ The remaining quantity of the last SELL order stays in the Order Book.
 
 ---
 
-## Step 7 - Update the Order Book
+## Step 7 - Expire Orders
 
-After matching:
+Each order is active only for its 30-minute delivery slot.
 
-* Remove completed orders.
-* Update remaining quantities.
-* Store partially matched orders if required.
-* Keep unmatched limit orders in the Order Book.
+If the delivery slot ends before the order is fully matched, the remaining quantity expires.
 
-The Order Book always represents the current active market.
+Expired orders are removed from the active Market Book and an order status update is published.
+
+Possible status:
+
+```text
+EXPIRED
+```
 
 ---
 
@@ -243,21 +260,23 @@ Publishing events after the matching process keeps the Order Book in a consisten
 
 ### Decision 1
 
-Match only within the same Grid Zone.
+Match only within the same 30-minute delivery slot.
 
 Reason:
 
-Energy trading is limited to participants connected to the same Grid Zone.
+Energy must be bought and sold for the same delivery period.
+
+Orders from different grid zones may match if Grid Transfer Policy allows transfer between those zones.
 
 ---
 
 ### Decision 2
 
-Use Price-Time Priority.
+Use Effective-Price-Time Priority.
 
 Reason:
 
-Provides fair order execution and follows common exchange practices.
+Cross-zone trades may include grid fees. Therefore, the matching engine must compare orders using effective price rather than raw energy price alone.
 
 ---
 
@@ -294,7 +313,9 @@ Publishing events after all matching is complete keeps the matching process cons
 ## Notes
 
 * The algorithm is based on the Continuous Double Auction (CDA) market model.
-* The implementation will use one Order Book for each Grid Zone.
+* The implementation will use one Market Book for each 30-minute delivery slot.
+* Each Market Book will contain Zone Order Books.
+* Cross-zone matching will be controlled by Grid Transfer Policy.
 * Active Order Books are maintained in memory to achieve low-latency matching.
 
 
