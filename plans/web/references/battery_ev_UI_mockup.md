@@ -1,5 +1,4 @@
 # Energy Assets Dashboard
-![alt text](image.png)
 
 ## Overview
 
