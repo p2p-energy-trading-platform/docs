@@ -1697,6 +1697,7 @@ These improvements are planned for future versions and are not required for the 
 The following folder structure can be used for matching engine
 
 
+
 ```
 matching-engine/
 ├── CMakeLists.txt
@@ -1727,13 +1728,16 @@ matching-engine/
 │          │   └── Quantity.hpp
 │          │
 │          ├── orderbook/
-│          │   ├── OrderBook.hpp
+│          │   ├── MarketBook.hpp
+│          │   ├── ZoneOrderBook.hpp
 │          │   ├── OrderBookSide.hpp
 │          │   ├── PriceLevel.hpp
-│          │   └── OrderBookManager.hpp
+│          │   └── MarketBookManager.hpp
 │          │
 │          ├── matcher/
 │          │   ├── Matcher.hpp
+│          │   ├── CrossZoneMatcher.hpp
+│          │   ├── EffectivePriceCalculator.hpp
 │          │   ├── MatchingResult.hpp
 │          │   └── MatchingAlgorithm.hpp
 │          │
@@ -1741,11 +1745,13 @@ matching-engine/
 │          │   ├── MatchingEngine.hpp
 │          │   ├── OrderProcessor.hpp
 │          │   ├── MarketRouter.hpp
+│          │   ├── ExpiryManager.hpp
 │          │   └── RecoveryManager.hpp
 │          │
 │          ├── config/
 │          │   ├── MarketConfigCache.hpp
 │          │   ├── TariffCache.hpp
+│          │   ├── GridTransferCache.hpp
 │          │   └── GridTopologyCache.hpp
 │          │
 │          └── ports/
@@ -1768,6 +1774,8 @@ matching-engine/
 │       ├── codec/
 │       │   ├── ProtobufOrderCodec.cpp
 │       │   ├── ProtobufTradeCodec.cpp
+│       │   ├── ProtobufMarketConfigCodec.cpp
+│       │   ├── TradeEventMapper.cpp
 │       │   ├── ProtobufGridRuleCodec.cpp
 │       │   └── OrderEventMapper.cpp
 │       └── recovery/
@@ -1792,7 +1800,6 @@ matching-engine/
 ├── Dockerfile
 └── docker-compose.yml
 ```
-
 
 # 11. Testing Strategy
 
