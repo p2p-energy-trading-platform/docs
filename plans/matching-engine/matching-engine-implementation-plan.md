@@ -1198,6 +1198,16 @@ Support for additional order types, such as Market Orders, may be introduced in 
 
 ---
 
+## 6.11 Order Expiry Handling
+
+Orders are valid only for their assigned 30-minute delivery slot.
+
+When the delivery slot ends, any remaining unmatched quantity automatically expires and is no longer available for trading.
+
+
+
+---
+
 # 7. Internal Components
 
 The Matching Engine is divided into multiple internal components.
@@ -1689,6 +1699,18 @@ Possible improvements include:
 * Custom memory pools.
 
 These improvements are planned for future versions and are not required for the initial implementation.
+
+---
+
+## 9.5 Thread Safety Mechanisms
+
+The initial implementation uses Read-Write Locks (RWLock) for Market Book access and Mutex Locks for critical sections during matching operations.
+
+Each Market Book is protected by a shared mutex, and each Zone Order Book has its own mutex. Lock ordering follows a top-down approach to prevent deadlocks.
+
+The `std::map<Price, std::deque<Order>>` data structure requires mutex protection for all access, as it is not thread-safe.
+
+
 
 ---
 
