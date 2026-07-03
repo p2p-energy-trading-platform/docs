@@ -79,6 +79,20 @@ Benefits:
 
 This area requires further research and benchmarking before implementation.
 
+#### 3.1 Cache Grid Transfer Rules In Memory
+
+Cross-zone matching requires checking whether transfer is allowed between the seller zone and buyer zone and calculating the grid fee.
+
+The matching engine should not call an external service during matching.
+
+Grid transfer rules and tariff rules should be consumed from Kafka and stored in an in-memory cache.
+
+Benefits:
+
+* Avoids network calls during matching
+* Keeps cross-zone matching low-latency
+* Provides deterministic fee calculation during trade generation
+
 ---
 
 ### 4. Avoid Synchronous Database Writes
@@ -138,6 +152,18 @@ Benefits:
 * Simpler concurrency management
 * Predictable processing order
 
+#### 6.1 Partition by Market Book
+
+All orders that can match each other should be processed by the same matching thread or matching engine instance.
+
+For cross-zone matching, Kafka partitioning should not use grid zone as the key.
+
+Instead, the partition key should be:
+
+```text
+delivery_slot_start + product_type
+```
+
 ---
 
 ### 7. Reduce Memory Allocations
@@ -151,6 +177,22 @@ Potential techniques:
 * Preallocated containers
 
 This may become important during performance optimisation.
+
+---
+
+### 8. Limit Cross-Zone Candidate Search
+
+Cross-zone matching may require checking multiple Zone Order Books inside the same Market Book.
+
+To reduce latency:
+
+* Check only zones allowed by Grid Transfer Policy
+* Cache eligible zone pairs
+* Start with best price level in each eligible zone
+* Compare effective prices instead of scanning all orders
+* Stop when no remaining candidate can satisfy the incoming order price
+
+This keeps cross-zone matching efficient even when many grid zones exist.
 
 ---
 

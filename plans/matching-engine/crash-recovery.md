@@ -84,7 +84,7 @@ The Matching Engine only keeps active orders in memory for fast matching.
 
 When the Matching Engine starts, it performs a recovery process before accepting new orders.
 
-The recovery process rebuilds every Grid Zone Order Book using active orders stored by the Order Service.
+The recovery process rebuilds every Market Book and its internal Zone Order Books using active non-expired orders stored by the Order Service.
 
 ---
 
@@ -115,15 +115,19 @@ PostgreSQL
 
 ↓
 
-Return Active Orders
+Return Active Non-Expired Orders
 
 ↓
 
-Group Orders by Grid Zone
+Group Orders by Delivery Slot and Product Type
 
 ↓
 
-Rebuild Order Books
+Group Orders by Grid Zone inside each Market Book
+
+↓
+
+Rebuild Market Books and Zone Order Books
 
 ↓
 
@@ -162,9 +166,9 @@ The Kafka Consumer remains stopped until recovery is completed.
 
 The Recovery Manager requests all active orders from the Order Service.
 
-Only active orders are requested.
+Only active and non-expired orders are requested.
 
-Completed orders are ignored.
+Completed, cancelled, rejected, and expired orders are ignored.
 
 ---
 
@@ -172,7 +176,7 @@ Completed orders are ignored.
 
 The Order Service loads active orders from PostgreSQL.
 
-Only orders with the following statuses are returned:
+Only non-expired orders with the following statuses are returned:
 
 * OPEN
 * PARTIALLY_FILLED
@@ -182,6 +186,7 @@ Orders with these statuses are not returned:
 * FILLED
 * CANCELLED
 * REJECTED
+* EXPIRED
 
 ---
 
@@ -189,7 +194,15 @@ Orders with these statuses are not returned:
 
 The Matching Engine groups the received orders by Grid Zone.
 
-Each order is inserted into the correct Order Book.
+The Matching Engine first groups the received orders by Market Book.
+
+A Market Book is identified by:
+
+```text
+delivery_slot_start + product_type
+```
+
+Inside each Market Book, orders are grouped by grid zone and inserted into the correct Zone Order Book.
 
 Example:
 
@@ -339,6 +352,14 @@ If the Recovery Manager cannot retrieve active orders:
 * Continue recovery until successful.
 
 The Matching Engine should never process new orders with an incomplete Order Book.
+
+# Expired Orders During Recovery
+
+During recovery, the Matching Engine must not restore orders whose delivery slot has already ended.
+
+If the Order Service returns an order that has already expired, the Matching Engine rejects it from the in-memory book and publishes or requests an EXPIRED status update.
+
+This prevents stale orders from being matched after their delivery window has ended.
 
 ---
 
