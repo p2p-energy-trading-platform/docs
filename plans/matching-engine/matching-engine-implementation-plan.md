@@ -1198,6 +1198,16 @@ Support for additional order types, such as Market Orders, may be introduced in 
 
 ---
 
+## 6.11 Order Expiry Handling
+
+Orders are valid only for their assigned 30-minute delivery slot.
+
+When the delivery slot ends, any remaining unmatched quantity automatically expires and is no longer available for trading.
+
+
+
+---
+
 # 7. Internal Components
 
 The Matching Engine is divided into multiple internal components.
@@ -1692,10 +1702,126 @@ These improvements are planned for future versions and are not required for the 
 
 ---
 
+## 9.5 Thread Safety Mechanisms
+
+The initial implementation uses Read-Write Locks (RWLock) for Market Book access and Mutex Locks for critical sections during matching operations.
+
+Each Market Book is protected by a shared mutex, and each Zone Order Book has its own mutex. Lock ordering follows a top-down approach to prevent deadlocks.
+
+The `std::map<Price, std::deque<Order>>` data structure requires mutex protection for all access, as it is not thread-safe.
+
+
+
+---
+
 # 10. Project Structure
 
-> **PLANNING NOTE:** The Matching Engine project structure has not yet been defined. It will be designed and added later during the implementation planning phase.
+The following folder structure can be used for matching engine
 
+
+
+```
+matching-engine/
+├── CMakeLists.txt
+├── CMakePresets.json
+├── conanfile.txt
+├── README.md
+├── .clang-format
+├── .clang-tidy
+├── .gitignore
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── include/  # Contains header files
+│   └── gridx/
+│      └── matching/
+|          |
+|          ├── common/
+|          │   ├── Logger.hpp
+|          |   ├── Types.hpp
+|          │   └── Utils.hpp
+|          |
+│          ├── domain/
+│          │   ├── Order.hpp
+│          │   ├── Trade.hpp
+│          │   ├── MarketId.hpp
+│          │   ├── Price.hpp
+│          │   └── Quantity.hpp
+│          │
+│          ├── orderbook/
+│          │   ├── MarketBook.hpp
+│          │   ├── ZoneOrderBook.hpp
+│          │   ├── OrderBookSide.hpp
+│          │   ├── PriceLevel.hpp
+│          │   └── MarketBookManager.hpp
+│          │
+│          ├── matcher/
+│          │   ├── Matcher.hpp
+│          │   ├── CrossZoneMatcher.hpp
+│          │   ├── EffectivePriceCalculator.hpp
+│          │   ├── MatchingResult.hpp
+│          │   └── MatchingAlgorithm.hpp
+│          │
+│          ├── engine/
+│          │   ├── MatchingEngine.hpp
+│          │   ├── OrderProcessor.hpp
+│          │   ├── MarketRouter.hpp
+│          │   ├── ExpiryManager.hpp
+│          │   └── RecoveryManager.hpp
+│          │
+│          ├── config/
+│          │   ├── MarketConfigCache.hpp
+│          │   ├── TariffCache.hpp
+│          │   ├── GridTransferCache.hpp
+│          │   └── GridTopologyCache.hpp
+│          │
+│          └── ports/
+│              ├── OrderEventConsumer.hpp
+│              ├── TradeEventPublisher.hpp
+│              └── RecoveryClient.hpp
+│
+├── src/ # Contains implementations of above header files
+│   ├── main.cpp
+│   ├── domain/
+│   ├── orderbook/
+│   ├── matcher/
+│   ├── engine/
+│   ├── config/
+│   └── adapters/
+│       ├── kafka/
+│       |   ├── KafkaOrderConsumer.cpp
+│       │   ├── KafkaEventPublisher.cpp
+│       │   └── KafkaConfigConsumer.cpp
+│       ├── codec/
+│       │   ├── ProtobufOrderCodec.cpp
+│       │   ├── ProtobufTradeCodec.cpp
+│       │   ├── ProtobufMarketConfigCodec.cpp
+│       │   ├── TradeEventMapper.cpp
+│       │   ├── ProtobufGridRuleCodec.cpp
+│       │   └── OrderEventMapper.cpp
+│       └── recovery/
+│
+├── tests/
+│   ├── unit/
+│   │   ├── OrderBookTest.cpp
+│   │   ├── MatcherTest.cpp
+│   │   └── TariffCacheTest.cpp
+│   │
+│   ├── integration/
+│   │   ├── KafkaFlowTest.cpp
+│   │   └── RecoveryTest.cpp
+│   │
+│   └── benchmark/
+│       ├── OrderBookBenchmark.cpp
+│       └── MatchingBenchmark.cpp
+│
+├── scripts/
+│   ├── run-local.sh
+│   └── benchmark.sh
+├── Dockerfile
+└── docker-compose.yml
+```
 
 # 11. Testing Strategy
 
