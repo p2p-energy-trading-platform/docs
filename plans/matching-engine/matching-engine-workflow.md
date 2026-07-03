@@ -145,13 +145,40 @@ The engine performs basic validation such as:
 * Valid order type
 * Valid quantity
 * Valid price
+* Valid grid zone
+* Valid delivery slot
+* Delivery slot is within the supported 30-minute slot structure
+* Order has not already expired
 * Required fields
 
 Business validation should already be completed by the Order Service.
 
 ---
 
-### 4. Determine Order Type
+### 4. Select Market Book
+
+After validation, the Matching Engine selects the Market Book using the order's delivery slot and product type.
+
+For the initial implementation:
+
+```text
+Market Book = delivery_slot_start + ENERGY
+```
+
+Each delivery slot is fixed to 30 minutes.
+
+Example:
+
+```text
+Market Book: ENERGY / 10:00–10:30
+```
+
+The order's grid zone is still stored, but it is used as the participant location, not as the only matching boundary.
+
+
+---
+
+### 5. Determine Order Type
 
 The engine checks whether the order is:
 
@@ -162,25 +189,38 @@ Each order type follows a different matching process.
 
 ---
 
-### 5. Match Order
+### 6. Match Order
 
-If matching conditions are satisfied, the engine searches the order book and performs matching using the matching algorithm.
+If matching conditions are satisfied, the engine searches the selected Market Book.
+
+The engine first identifies eligible opposite-side orders from the same delivery slot. These orders may be from the same grid zone or from another grid zone if the Grid Transfer Policy allows cross-zone transfer.
+
+Cross-zone matching uses effective price:
+
+```text
+BUY matching:  seller_price + grid_fee <= buyer_limit_price
+SELL matching: seller_price <= buyer_limit_price - grid_fee
+```
+
+The matcher selects orders using Effective-Price-Time Priority.
 
 ---
 
-### 6. Add to Order Book
+### 7. Add to Order Book
 
-If a limit order cannot be matched immediately, it is added to the order book and waits for a future matching order.
+If a limit order cannot be fully matched immediately, its remaining quantity is added to the Zone Order Book inside the selected Market Book.
+
+The order remains active only for its 30-minute delivery slot. If the delivery slot ends before the order is fully matched, the remaining quantity expires.
 
 ---
 
-### 7. Generate Trade
+### 8. Generate Trade
 
 When a successful match occurs, one or more trade records are created.
 
 ---
 
-### 8. Update Order Book
+### 9. Update Order Book
 
 After matching:
 
@@ -191,7 +231,7 @@ After matching:
 
 ---
 
-### 9. Update Order Status
+### 10. Update Order Status
 
 Order status is updated.
 
@@ -201,10 +241,11 @@ Examples:
 * PARTIALLY_FILLED
 * FILLED
 * CANCELLED
+* EXPIRED
 
 ---
 
-### 10. Publish Events
+### 11. Publish Events
 
 The Matching Engine publishes trade and order update events to Kafka.
 
@@ -216,12 +257,17 @@ Other services consume these events independently.
 
 The Matching Engine should follow these rules:
 
-* Price-Time Priority
-* Highest Buy Price has priority
-* Lowest Sell Price has priority
-* Earlier orders have priority when prices are equal
+* Orders are matched only within the same 30-minute delivery slot
+* Cross-zone matching is allowed only when Grid Transfer Policy allows it
+* Same-zone matching has zero grid fee
+* Cross-zone matching includes grid fee in the effective price
+* Effective-Price-Time Priority
+* Highest effective buy price has priority
+* Lowest effective sell price has priority
+* Earlier orders have priority when effective prices are equal
 * Support partial fills
 * Support multiple trades from a single order
+* Expire unmatched remaining quantity when the delivery slot ends
 
 ---
 

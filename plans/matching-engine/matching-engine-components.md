@@ -15,10 +15,12 @@ Matching Engine
 
 ├── Kafka Consumer
 ├── Order Validator
-├── Order Book Manager
+├── Market Book Manager
+├── Grid Transfer Cache
 ├── Order Matcher
 ├── Trade Manager
 ├── Event Publisher
+├── Expiry Manager
 └── Recovery Manager
 ```
 
@@ -95,10 +97,13 @@ The Order Service already performs business validation. The Matching Engine only
 
 ## Responsibilities
 
-* Check Grid Zone
+* Check grid zone
 * Check order type
 * Check quantity
 * Check price
+* Check delivery slot
+* Check that the delivery slot follows the 30-minute slot duration
+* Check that the order has not expired
 * Check required fields
 
 ## Input
@@ -111,22 +116,24 @@ The Order Service already performs business validation. The Matching Engine only
 
 ---
 
-# 3. Order Book Manager
+# 3. Market Book Manager
 
 ## Purpose
 
-Manages all Order Books used by the Matching Engine.
+Manages all Market Books used by the Matching Engine.
 
-Each Grid Zone has its own Order Book.
+Each Market Book represents one 30-minute delivery slot and product type.
+
+Each Market Book contains Zone Order Books for participant grid zones.
 
 ## Responsibilities
 
-* Load the correct Grid Zone Order Book
-* Add new orders
-* Remove completed orders
+* Load the correct Market Book by delivery slot and product type
+* Load Zone Order Books inside the Market Book
+* Add new orders to the correct Zone Order Book
+* Remove completed or expired orders
 * Update remaining quantities
-* Find the best buy order
-* Find the best sell order
+* Find same-zone and cross-zone candidate orders
 * Maintain Price Levels
 
 ## Input
@@ -139,7 +146,33 @@ Each Grid Zone has its own Order Book.
 
 ---
 
-# 4. Order Matcher
+# 4. Grid Transfer Cache
+
+## Purpose
+
+Stores grid transfer rules and tariff information required for cross-zone matching.
+
+The Matching Engine should not call external services during normal matching. Therefore, grid transfer rules and grid fees are kept in memory.
+
+## Responsibilities
+
+* Store allowed grid zone transfer pairs
+* Store grid fee per zone pair
+* Store grid rule or tariff version
+* Provide transfer rules to the Order Matcher during matching
+
+## Input
+
+* Grid transfer rule events from Kafka
+* Tariff rule events from Kafka
+
+## Output
+
+* GridTransferRule
+
+---
+
+# 5. Order Matcher
 
 ## Purpose
 
@@ -149,9 +182,11 @@ The matching process follows the matching algorithm defined for GridX.
 
 ## Responsibilities
 
-* Select the correct Grid Zone
-* Search the opposite Order Book
-* Apply Price-Time Priority
+* Select the correct Market Book
+* Search eligible same-zone and cross-zone opposite orders
+* Apply Grid Transfer Policy
+* Calculate effective price using grid fees
+* Apply Effective-Price-Time Priority
 * Handle partial fills
 * Match multiple orders when required
 * Return the matching result
@@ -167,7 +202,30 @@ The matching process follows the matching algorithm defined for GridX.
 
 ---
 
-# 5. Trade Manager
+# 6. Expiry Manager
+
+## Purpose
+
+Expires unmatched order quantities when their 30-minute delivery slot ends.
+
+## Responsibilities
+
+* Detect orders whose delivery slot has ended
+* Mark remaining unmatched quantity as EXPIRED
+* Remove expired orders from active Market Books
+* Publish order expiry status updates
+
+## Input
+
+* Active orders in Market Books
+
+## Output
+
+* Expired order updates
+
+---
+
+# 7. Trade Manager
 
 ## Purpose
 
@@ -190,7 +248,7 @@ Creates Trade objects after successful matching.
 
 ---
 
-# 6. Event Publisher
+# 8. Event Publisher
 
 ## Purpose
 
@@ -215,7 +273,7 @@ The Matching Engine completes all matching before publishing events.
 
 ---
 
-# 7. Recovery Manager
+# 9. Recovery Manager
 
 ## Purpose
 
@@ -267,8 +325,10 @@ Resume Kafka Consumer
 | ------------------ | --------------------------------- |
 | Kafka Consumer     | Receive order events from Kafka   |
 | Order Validator    | Validate incoming orders          |
-| Order Book Manager | Manage Grid Zone Order Books      |
-| Order Matcher      | Match buy and sell orders         |
+| Market Book Manager | Manage Market Books and Zone Order Books |
+| Grid Transfer Cache | Store grid transfer rules and grid fees |
+| Order Matcher       | Match buy and sell orders using effective-price-time priority |
+| Expiry Manager      | Expire unmatched orders when their delivery slot ends |
 | Trade Manager      | Create completed trades           |
 | Event Publisher    | Publish events to Kafka           |
 | Recovery Manager   | Restore Order Books after restart |

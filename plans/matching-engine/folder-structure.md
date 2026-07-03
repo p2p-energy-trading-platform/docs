@@ -42,13 +42,16 @@ matching-engine/
 │          │   └── Quantity.hpp
 │          │
 │          ├── orderbook/
-│          │   ├── OrderBook.hpp
+│          │   ├── MarketBook.hpp
+│          │   ├── ZoneOrderBook.hpp
 │          │   ├── OrderBookSide.hpp
 │          │   ├── PriceLevel.hpp
-│          │   └── OrderBookManager.hpp
+│          │   └── MarketBookManager.hpp
 │          │
 │          ├── matcher/
 │          │   ├── Matcher.hpp
+│          │   ├── CrossZoneMatcher.hpp
+│          │   ├── EffectivePriceCalculator.hpp
 │          │   ├── MatchingResult.hpp
 │          │   └── MatchingAlgorithm.hpp
 │          │
@@ -56,11 +59,13 @@ matching-engine/
 │          │   ├── MatchingEngine.hpp
 │          │   ├── OrderProcessor.hpp
 │          │   ├── MarketRouter.hpp
+│          │   ├── ExpiryManager.hpp
 │          │   └── RecoveryManager.hpp
 │          │
 │          ├── config/
 │          │   ├── MarketConfigCache.hpp
 │          │   ├── TariffCache.hpp
+│          │   ├── GridTransferCache.hpp
 │          │   └── GridTopologyCache.hpp
 │          │
 │          └── ports/
@@ -83,6 +88,8 @@ matching-engine/
 │       ├── codec/
 │       │   ├── ProtobufOrderCodec.cpp
 │       │   ├── ProtobufTradeCodec.cpp
+│       │   ├── ProtobufMarketConfigCodec.cpp
+│       │   ├── TradeEventMapper.cpp
 │       │   ├── ProtobufGridRuleCodec.cpp
 │       │   └── OrderEventMapper.cpp
 │       └── recovery/
