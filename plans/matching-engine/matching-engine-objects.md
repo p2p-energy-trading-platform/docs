@@ -15,8 +15,12 @@ Matching Engine
 
 ├── Order
 ├── Trade
-├── OrderBook
+├── MarketId
+├── MarketBook
+├── ZoneOrderBook
+├── OrderBookSide
 ├── PriceLevel
+├── GridTransferRule
 └── MatchingResult
 ```
 
@@ -55,18 +59,22 @@ Represents a buy or sell request received by the Matching Engine.
 
 ## Fields
 
-| Field             | Description                           |
-| ----------------- | ------------------------------------- |
-| orderId           | Unique order identifier               |
-| userId            | User who created the order            |
-| gridZone          | Grid zone for matching                |
-| side              | BUY or SELL                           |
-| orderType         | LIMIT or MARKET                       |
-| price             | Order price                           |
-| quantity          | Original quantity                     |
+| Field             | Description |
+| ----------------- | ----------- |
+| orderId           | Unique order identifier |
+| userId            | User who created the order |
+| marketId          | Identifies the delivery slot and product type |
+| gridZone          | Grid zone where the participant is located |
+| side              | BUY or SELL |
+| orderType         | LIMIT or MARKET |
+| price             | Limit price per kWh |
+| quantity          | Original quantity |
 | remainingQuantity | Quantity still available for matching |
-| status            | Current order status                  |
-| timestamp         | Order creation time                   |
+| deliverySlotStart | Start time of the 30-minute delivery slot |
+| deliverySlotEnd   | End time of the 30-minute delivery slot |
+| expiresAt         | Time after which unmatched quantity expires |
+| status            | Current order status |
+| timestamp         | Order creation time used for time priority |
 
 ## Responsibilities
 
@@ -85,17 +93,23 @@ Represents a successful match between one buy order and one sell order.
 
 ## Fields
 
-| Field       | Description                        |
-| ----------- | ---------------------------------- |
-| tradeId     | Unique trade identifier            |
-| buyOrderId  | Buy order reference                |
-| sellOrderId | Sell order reference               |
-| buyerId     | Buyer identifier                   |
-| sellerId    | Seller identifier                  |
-| gridZone    | Grid zone where the trade occurred |
-| price       | Executed trade price               |
-| quantity    | Executed quantity                  |
-| timestamp   | Trade execution time               |
+| Field                 | Description |
+| --------------------- | ----------- |
+| tradeId               | Unique trade identifier |
+| buyOrderId            | Buy order reference |
+| sellOrderId           | Sell order reference |
+| buyerId               | Buyer identifier |
+| sellerId              | Seller identifier |
+| buyerGridZone         | Grid zone of the buyer |
+| sellerGridZone        | Grid zone of the seller |
+| deliverySlotStart     | Start time of the delivery slot |
+| deliverySlotEnd       | End time of the delivery slot |
+| energyPrice           | Executed energy price per kWh |
+| gridFee               | Grid fee per kWh for this trade |
+| buyerTotalPrice       | Energy price plus grid fee |
+| quantity              | Executed quantity |
+| gridRuleVersion       | Version of the grid/tariff rule used |
+| timestamp             | Trade execution time |
 
 ## Responsibilities
 
@@ -105,18 +119,36 @@ Represents a successful match between one buy order and one sell order.
 
 ---
 
-# 3. OrderBook
+# 3. MarketBook
 
 ## Purpose
 
-Stores all active buy and sell orders for one Grid Zone.
+Stores all active buy and sell orders for one delivery slot and product type.
 
-Each Grid Zone has its own OrderBook.
+For the initial implementation, each MarketBook represents one 30-minute ENERGY trading window.
+
+Example:
+
+```text
+MarketBook = ENERGY / 10:00–10:30
+```
+
+Each MarketBook contains multiple ZoneOrderBooks.
+
+---
+
+# 4. ZoneOrderBook
+
+## Purpose
+
+Stores active buy and sell orders submitted by participants from one grid zone inside a MarketBook.
+
+A ZoneOrderBook does not prevent cross-zone matching. It is used to organize orders by participant location so that the matcher can apply grid transfer rules and grid fees.
 
 ## Structure
 
 ```text
-OrderBook
+ZoneOrderBook
 
 ├── Buy Book
 └── Sell Book
@@ -124,12 +156,34 @@ OrderBook
 
 ## Responsibilities
 
-* Store active orders
-* Add new orders
-* Remove completed orders
-* Update remaining quantities
-* Find the best buy price
-* Find the best sell price
+* Store active orders for one grid zone
+* Maintain buy and sell price levels
+* Support price-time ordering inside each price level
+* Allow the matcher to search same-zone and cross-zone candidates
+
+---
+
+# GridTransferRule
+
+## Purpose
+
+Represents whether energy transfer is allowed between two grid zones and what grid fee applies.
+
+## Fields
+
+| Field          | Description |
+| -------------- | ----------- |
+| sellerGridZone | Grid zone of the seller |
+| buyerGridZone  | Grid zone of the buyer |
+| allowed        | Whether transfer is allowed |
+| gridFee        | Grid fee per kWh |
+| version        | Rule or tariff version |
+
+## Responsibilities
+
+* Determine whether cross-zone matching is allowed
+* Provide grid fee used during effective price calculation
+* Provide version information for settlement and auditability
 
 ---
 
