@@ -1,0 +1,25 @@
+name: Sync Repository Docs to Confluence
+
+on:
+  push:
+    branches:
+      - main  # Triggers the sync whenever changes push to your main branch
+    paths:
+      - 'docs/**'  # Only runs if files inside your docs folder change
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Publish Markdown Docs to Confluence
+        uses: markdown-confluence/publish-action@v5
+        with:
+          confluenceBaseUrl: 'https://vidushan145.atlassian.net' # Extracted from image_8177c9.png
+          confluenceParentId: '5472427'   # 👈 Replace this with the number you just found
+          atlassianUserName: 'vidurshan145@gmail.com' # 👈 Replace this with your Atlassian login email
+          atlassianApiToken: ${{ secrets.ATLASSIAN_API_TOKEN }} # This pulls securely from your GitHub Secrets
+          folderToPublish: '.'                              # Scans your repository's docs folder
+          contentRoot: '.'
