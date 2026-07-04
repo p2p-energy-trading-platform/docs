@@ -52,7 +52,6 @@ This is not finalized and does not include the full deep view.
 
 **NOTE:** All kafka and redis topic/key names mentioned in this diagram are not finalized
 
-
 ```mermaid
 graph TD
     %% Operational Inputs & Triggers

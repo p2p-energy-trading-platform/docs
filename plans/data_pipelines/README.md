@@ -59,7 +59,6 @@ Cold storage - To store historical candle data for all timeframes (1m, 15m, 30m,
 
 **NOTE**: This is planned for 2nd semester so plan of this is currently not rsearched
 
-
 ### Note on ingestion
 
 The following ingestion services should only handle persisting data to redis and timescaledb only. They should not worry about minio.
@@ -79,10 +78,3 @@ The data that should be pushed by the above tools to minio are:
 * market candle data
 
 **NOTE**: Market candle data is formed by the market ticket service and will not appear in a kafka topic. Making market ticker service push to all 3 storage tiers is not ideal and an anti pattern. The proper plan I have come up for this is: let market ticker service push the data back to apache kafka and then let the above tools batch the candles and store them in minio buckets. This is a much better pattern. This plan will be eloborated in the market ticker plans!
-
-
-
-
-
-
-

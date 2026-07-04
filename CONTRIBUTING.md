@@ -54,9 +54,10 @@ When new code repositories are added to this project (which they obviously will)
 We can use the Conventional Commits specification to keep our repository history clean and readable. Or you can use your own commit formats so no issues!! However strictly avoid commits that do lots of changes or commit messages that are unnecessarily longer than needed.
 
 ### Message Format
+
 Each commit message **can** use the following structure:
 
-```
+```text
 type(scope): short summary
 ```
 
@@ -79,6 +80,7 @@ type(scope): short summary
 | `remove` | Changes that remove/delete files/code/logic |
 
 ### Examples
+
 - `feat(api): add order matching logic for energy trading`
 - `fix(smart-contract): resolve token balance overflow on settlement`
 - `docs: update setup steps in readme`

@@ -50,7 +50,7 @@ Info: An interactive dashboard that provides full order book depth visibility, r
 * Next JS 16 - most members are familiar with next js
 * Tailwind v4
 * React 19 - has compilation and avoid unnecessary boilerplate
-* Tanstack query and store (or zustand) 
+* Tanstack query and store (or zustand)
 * Lightweight trading charts
 * Component library - not decided
 
@@ -70,7 +70,6 @@ Info: A cross-platform mobile application designed for household prosumers to mo
 * Automated dashboards
 * Unified wallet and ledger screen
 * Push notifications
-
 
 #### Techstack & Justifications:
 
@@ -164,7 +163,7 @@ Info: A robust event streaming and data processing pipeline that handles smart m
 
 * IoT smart meter data pipeline: pipeline + ingestion consumer
 * Candle & trade events pipeline: pipeline + market ticker service (acts as consumer too)
-* MLOps Pipeline: pipeline + dbt + minio 
+* MLOps Pipeline: pipeline + dbt + minio
 
 #### Services:
 
@@ -200,7 +199,7 @@ Info: A robust event streaming and data processing pipeline that handles smart m
 
 Full Plan & Documentation: **Not available will be added in future**
 
-Info: Ticker service that listens to trade events and streams real time candle data, paints hot candles, and aggregrates handles to timescaledb 
+Info: Ticker service that listens to trade events and streams real time candle data, paints hot candles, and aggregrates handles to timescaledb
 
 #### Features:
 
@@ -307,6 +306,3 @@ Info: An event-driven service that triggers instant push notifications via Expo 
 #### Techstack & Justification:
 
 * Fastify - Asynchronous I/O Execution and easy to build
-
-
-

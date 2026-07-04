@@ -8,14 +8,12 @@ connie-title: Login Service Plan
 
 The Login module allows registered prosumers to securely access the Peer-to-Peer Energy Trading Platform. Users authenticate using their registered credentials or Single Sign-On (SSO). After successful authentication, the backend issues a JWT access token that is used to authorize subsequent API requests.
 
-
 ## Objectives
 
 - Authenticate registered users securely.
 - Issue JWT tokens after successful login.
 - Support role-based access control.
 - Protect backend APIs from unauthorized access.
-
 
 ## Login Flow
 
@@ -29,13 +27,10 @@ The Login module allows registered prosumers to securely access the Peer-to-Peer
 8. The client stores the token securely.
 9. User is redirected to the Dashboard.
 
-
 ## Input Fields
 
- Email - Registered email address 
- Password - User password 
-
-
+ Email - Registered email address
+ Password - User password
 
 ## Validation Rules
 
@@ -43,7 +38,6 @@ The Login module allows registered prosumers to securely access the Peer-to-Peer
 - Password cannot be empty.
 - Invalid credentials return an authentication error.
 - Disabled or suspended accounts cannot log in.
-
 
 ## Successful Login
 
@@ -53,7 +47,6 @@ After successful authentication:
 - User session begins.
 - Dashboard is loaded.
 - Protected APIs become accessible.
-
 
 ## Failed Login
 
@@ -65,7 +58,6 @@ Possible errors include:
 - Account suspended.
 - Server unavailable.
 
-
 ## Security Features
 
 - JWT-based authentication.
@@ -75,7 +67,6 @@ Possible errors include:
 - Input validation.
 - Session expiration.
 
-
 ## Future Enhancements
 
 - Multi-Factor Authentication (MFA)
@@ -84,11 +75,9 @@ Possible errors include:
 - Login history
 - Device management
 
-
 ## Related Functionality
 
 - Function 2: Login with secure authentication (JWT/OAuth)
-
 
 ## Related Services
 

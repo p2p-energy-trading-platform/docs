@@ -18,7 +18,7 @@ Handles registration of IoT smart meter (full flow of this is explained in [regi
 
 ## Dispatch Service
 
-This service works alongside ingestion and it sends physical adjustment commands over MQTT to the simulation. 
+This service works alongside ingestion and it sends physical adjustment commands over MQTT to the simulation.
 
 When the Dispatch Service confirms a physical adjustment must be applied to an energy storage medium, it connects as an MQTT client and issues an actuation packet directly down to the simulator's hardware control topic
 
@@ -26,7 +26,7 @@ Example topic structure: `grid01/[house_id]/actuator/battery/[battery_id]`
 
 Example command / dispatch schedule:
 
-```
+```json
 {
   "dispatch_id": "dsp_20260616_0042_001",
   "asset_id": "bat_001",

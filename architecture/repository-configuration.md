@@ -12,7 +12,7 @@ The best way to do this is have a `gridx-workspace` repo that will have a root d
 
 This is the structure of the workspace repo:
 
-```
+```text
 gridx-workspace/
 ├── .gitignore
 ├── docker-compose.root.yml

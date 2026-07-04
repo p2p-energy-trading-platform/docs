@@ -2,17 +2,19 @@
 connie-title: Mobile App - UI Screen 
 ---
 
-# Mobile App - UI Screen 
+# Mobile App - UI Screen
+
+----------
 
 **Platform:** iOS / Android (React Native - Expo)
-----------
-##  Design Overview & Theme Strategy
 
-###  Vision
+## Design Overview & Theme Strategy
+
+### Vision
 
 GridX mobile app is designed to be **clean, modern, and focused** — removing distractions so users can quickly check energy prices, monitor solar generation, and execute trades in seconds. The design emphasizes **real-time data clarity** and **instant decision-making**.
 
-###  Design Philosophy
+### Design Philosophy
 
 - **Real-time first**: Large, legible price displays update instantly
 
@@ -24,9 +26,11 @@ GridX mobile app is designed to be **clean, modern, and focused** — removing d
 
 - **Dark-friendly**: Optimized for both day and night usage patterns
 
-###  Color Palette Strategy
-####  Light Mode (Daytime)
-``` 
+### Color Palette Strategy
+
+#### Light Mode (Daytime)
+
+```text
 Background: White (#FFFFFF)
 
 Surface: Light Gray (#F5F5F5)
@@ -45,11 +49,11 @@ Text Secondary: Medium Gray (#666666)
 
 Border: Light Gray (#EEEEEE)
 
- ``` 
+ ```
 
-####  Dark Mode (Night)
+#### Dark Mode (Night)
 
-``` 
+```text
 
 Background: Very Dark Gray (#0D1117)
 
@@ -69,7 +73,7 @@ Text Secondary: Light Gray (#A0A0A0)
 
 Border: Dark Gray (#30363D)
 
- ``` 
+ ```
 
 **Why this approach?**
 
@@ -81,17 +85,20 @@ Border: Dark Gray (#30363D)
 
 - Both modes use same accent colors (just brightness adjusted)
 
-###  Design References & Inspiration
+### Design References & Inspiration
 
 We're drawing from 5 reference platforms for design direction:
-####  Design References 
+
+#### Design References
+
 ![Black&Blue](./references/dark&blue.png)
 ![Black&green](./references/dark&green.png)
 ![Black&Purple](./references/Dark&purple.png)
 ![Black&white](./references/dark&white.png)
 ![Black&Yellow](./references/dark&yellow.png)
 ![white&Green](./references/light&green.png)
-####  1. **Crypto Trading Apps** (Coinbase, Kraken)
+
+#### 1. **Crypto Trading Apps** (Coinbase, Kraken)
 
 - **What we learn**: Real-time price tickers, candlestick charts, instant order placement
 
@@ -99,7 +106,7 @@ We're drawing from 5 reference platforms for design direction:
 
 - **GridX adaptation**: Use same green accent for "selling energy" (positive action), but keep overall cleaner
 
-####  2. **Energy Management Apps** (Tesla app, Smart meter dashboards)
+#### 2. **Energy Management Apps** (Tesla app, Smart meter dashboards)
 
 - **What we learn**: Live generation metrics (kW, daily earnings), visual gauges and progress bars
 
@@ -107,7 +114,7 @@ We're drawing from 5 reference platforms for design direction:
 
 - **GridX adaptation**: Solar generation card shows current kW live, earnings accumulate in real-time
 
-####  3. **Stock Trading Apps** (Robinhood, Etoro)
+#### 3. **Stock Trading Apps** (Robinhood, Etoro)
 
 - **What we learn**: Accessible order placement, portfolio tracking, transaction history
 
@@ -115,7 +122,7 @@ We're drawing from 5 reference platforms for design direction:
 
 - **GridX adaptation**: Toggle between "Buy" and "Sell", single input screen for qty + price
 
-####  4. **Fintech/Wallet Apps** (Google Pay, Apple Wallet)
+#### 4. **Fintech/Wallet Apps** (Google Pay, Apple Wallet)
 
 - **What we learn**: Trust through simplicity, security is implied not shown, balance prominence
 
@@ -123,7 +130,7 @@ We're drawing from 5 reference platforms for design direction:
 
 - **GridX adaptation**: Balance always visible at top of wallet screen, trades settle instantly with confirmation toast
 
-####  5. **Sustainability Apps** (Klima, Carbon Footprint trackers)
+#### 5. **Sustainability Apps** (Klima, Carbon Footprint trackers)
 
 - **What we learn**: Gamification (carbon saved), progress visualization, impact storytelling
 
@@ -131,7 +138,7 @@ We're drawing from 5 reference platforms for design direction:
 
 - **GridX adaptation**: "Carbon Saved" metric on dashboard, sustainability certificate downloadable, weekly earnings breakdown
 
-###  Typography Strategy
+### Typography Strategy
 
 **Font Family:**
 
@@ -141,7 +148,7 @@ We're drawing from 5 reference platforms for design direction:
 
 **Sizing Hierarchy:**
 
- ``` 
+ ```text
 
 Display/Large Price: 32px, bold (₹14.52 on dashboard)
 
@@ -155,7 +162,7 @@ Small/Hint Text: 12px, regular (grayed out)
 
 Captions: 11px, regular (timestamps, secondary info)
 
- ``` 
+ ```
 
 **Weight Usage:**
 
@@ -165,11 +172,11 @@ Captions: 11px, regular (timestamps, secondary info)
 
 - **Regular (400)**: Body text, inputs, descriptions
 
-###  Spacing & Layout Principles
+### Spacing & Layout Principles
 
 **Vertical Rhythm (based on 8px grid):**
 
- ``` 
+ ```text
 
 XS Gap: 4px (between icon and label)
 
@@ -181,7 +188,7 @@ L Gap: 24px (between major sections)
 
 XL Gap: 32px (top/bottom padding on screens)
 
- ``` 
+ ```
 
 **Card Design:**
 
@@ -213,9 +220,9 @@ XL Gap: 32px (top/bottom padding on screens)
 
 - Inactive: gray text, 60% opacity
 
-###  Component Design Approach
+### Component Design Approach
 
-####  Price Cards
+#### Price Cards
 
 - Large number (32px) with currency symbol
 
@@ -225,7 +232,7 @@ XL Gap: 32px (top/bottom padding on screens)
 
 - Last update timestamp (small gray text)
 
-####  Metric Cards
+#### Metric Cards
 
 - Icon (top left, 24x24px)
 
@@ -235,7 +242,7 @@ XL Gap: 32px (top/bottom padding on screens)
 
 - Optional trend indicator (small arrow + percentage)
 
-####  Input Fields
+#### Input Fields
 
 - Height: 48px
 
@@ -247,7 +254,7 @@ XL Gap: 32px (top/bottom padding on screens)
 
 - Helper text below (error messages in red)
 
-####  Primary CTA Buttons
+#### Primary CTA Buttons
 
 - Full width (96% with 2% margin)
 
@@ -259,7 +266,7 @@ XL Gap: 32px (top/bottom padding on screens)
 
 - Tap animation: Scale down 2%, then back (instant feedback)
 
-####  Secondary Buttons
+#### Secondary Buttons
 
 - Outline style (border only, no fill)
 
@@ -269,7 +276,7 @@ XL Gap: 32px (top/bottom padding on screens)
 
 - On hover/tap: Light gray background (20% opacity)
 
-###  Dark Mode Implementation
+### Dark Mode Implementation
 
 **System-level:**
 
@@ -289,7 +296,7 @@ XL Gap: 32px (top/bottom padding on screens)
 
 - Accent colors brighten in dark mode (same hue, higher saturation/brightness)
 
-###  Accessibility Standards
+### Accessibility Standards
 
 - **Color contrast**: WCAG AA minimum (4.5:1 for text)
 
@@ -303,9 +310,9 @@ XL Gap: 32px (top/bottom padding on screens)
 
 - **Motion**: Animations respect `prefers-reduced-motion` setting
 
-###  Visual Hierarchy (by screen type)
+### Visual Hierarchy (by screen type)
 
-####  Registration Screens
+#### Registration Screens
 
 1. **Step indicator** (top, small gray: "2 of 4")
 
@@ -317,7 +324,7 @@ XL Gap: 32px (top/bottom padding on screens)
 
 5. **Secondary actions** (small text links: "Change Email")
 
-####  Dashboard/App Screens
+#### Dashboard/App Screens
 
 1. **Live price** (32px bold, green/red)
 
@@ -329,7 +336,7 @@ XL Gap: 32px (top/bottom padding on screens)
 
 5. **Action buttons** (48px CTA at bottom)
 
-###  Design Evolution & Rationale
+### Design Evolution & Rationale
 
 **Why dark mode from launch?**
 
@@ -357,19 +364,19 @@ XL Gap: 32px (top/bottom padding on screens)
 
 - 16px+ feels too bubbly (low-trust appearance)
 
-###  Component Library (React Native)
+### Component Library (React Native)
 
 We'll use:
 
-- **Native components**: `<View>`, `<ScrollView>`, `<FlatList>` 
+- **Native components**: `<View>`, `<ScrollView>`, `<FlatList>`
 
-- **Custom wrappers**: `<Card>`, `<Button>`, `<PriceDisplay>`, `<MetricCard>` 
+- **Custom wrappers**: `<Card>`, `<Button>`, `<PriceDisplay>`, `<MetricCard>`
 
 - **Third-party**: `react-native-charts-kit` for candlestick (or Lightweight Charts if web-view)
 
 - **Icons**: Tabler Icons (outline style, 24x24px default)
 
-###  Motion & Interaction
+### Motion & Interaction
 
 **Tap feedback:**
 
@@ -398,7 +405,8 @@ We'll use:
 - Disable button during load (opacity 60%)
 
 ## Screen Flow Map
-```
+
+```text
 Welcome Screen
     ↓
 Account Type Selection
@@ -428,323 +436,338 @@ Dashboard (Home)
 ## Screen Specifications
 
 ### Screen 1: Welcome Screen
+
 **Purpose:**  
 First screen. Introduces the app and provides entry points.
 
 **Key Elements:**
 
--   GridX logo
--   App tagline: "Sell your solar energy directly to neighbors"
--   "Create Account" button (primary)
--   "Sign In" button (secondary)
+- GridX logo
+- App tagline: "Sell your solar energy directly to neighbors"
+- "Create Account" button (primary)
+- "Sign In" button (secondary)
 
 **Navigation:**
 
--   Tap "Create Account" → Screen 2 (Account Type Selection)
--   Tap "Sign In" → Login Screen
+- Tap "Create Account" → Screen 2 (Account Type Selection)
+- Tap "Sign In" → Login Screen
 
 ----------
 
 ### Screen 2: Account Type Selection
+
 **Purpose:**  
 User chooses registration method (email or SSO).
 
 **Key Elements:**
 
--   Title: "Create Account"
--   "Sign up with Email" button
--   "Continue with Google" button
--   "Continue with GitHub" button
--   Terms & Privacy link
+- Title: "Create Account"
+- "Sign up with Email" button
+- "Continue with Google" button
+- "Continue with GitHub" button
+- Terms & Privacy link
 
 **Navigation:**
 
--   Tap "Email" → Screen 3 (Email Registration)
--   Tap "Google" → Google OAuth → Screen 5 (KYC Form)
--   Tap "GitHub" → GitHub OAuth → Screen 5 (KYC Form)
+- Tap "Email" → Screen 3 (Email Registration)
+- Tap "Google" → Google OAuth → Screen 5 (KYC Form)
+- Tap "GitHub" → GitHub OAuth → Screen 5 (KYC Form)
 
 ----------
 
 ### Screen 3: Email Registration
+
 **Purpose:**  
 User enters email and password to create account.
 
 **Key Elements:**
 
--   Email input field
--   Password input field
--   Confirm password input field
--   Terms checkbox
--   "Create Account" button
+- Email input field
+- Password input field
+- Confirm password input field
+- Terms checkbox
+- "Create Account" button
 
 **Step Indicator:** 1 of 4
 
 **Navigation:**
 
--   Tap "Create Account" → Screen 4 (Email Verification)
--   Tap back → Screen 2
+- Tap "Create Account" → Screen 4 (Email Verification)
+- Tap back → Screen 2
 
 ----------
 
 ### Screen 4: Email Verification
+
 **Purpose:**  
 User verifies email via OTP code.
 
 **Key Elements:**
 
--   Display: "We sent code to: user@example.com"
--   6-digit OTP input boxes
--   "Verify & Continue" button
--   "Resend Code" button (30s countdown)
--   "Change Email" link
+- Display: "We sent code to: <user@example.com>"
+- 6-digit OTP input boxes
+- "Verify & Continue" button
+- "Resend Code" button (30s countdown)
+- "Change Email" link
 
 **Navigation:**
 
--   Enter correct OTP → Screen 5 (KYC Form - Personal Info)
--   Tap "Change Email" → Back to Screen 3
--   Tap back → Screen 2
+- Enter correct OTP → Screen 5 (KYC Form - Personal Info)
+- Tap "Change Email" → Back to Screen 3
+- Tap back → Screen 2
 
 ----------
 
 ### Screen 5: KYC Form - Personal Info
+
 **Purpose:**  
 Collect user's personal information for compliance.
 
 **Key Elements:**
 
--   First Name input
--   Last Name input
--   Date of Birth picker
--   Phone Number input
--   Street Address input
--   City/Town input
--   State/Province dropdown
--   Postal Code input
--   "Continue to ID Proof" button
+- First Name input
+- Last Name input
+- Date of Birth picker
+- Phone Number input
+- Street Address input
+- City/Town input
+- State/Province dropdown
+- Postal Code input
+- "Continue to ID Proof" button
 
 **Step Indicator:** 2 of 4
 
 **Navigation:**
 
--   Tap "Continue to ID Proof" → Screen 6 (KYC Form - ID Upload)
--   Tap back → Screen 2
+- Tap "Continue to ID Proof" → Screen 6 (KYC Form - ID Upload)
+- Tap back → Screen 2
 
 ----------
 
 ### Screen 6: KYC Form - ID Proof Upload
+
 **Purpose:**  
 User uploads government ID for verification.
 
 **Key Elements:**
 
--   ID Type dropdown (Aadhaar, Passport, Driver License, etc.)
--   ID Number input field
--   "Upload Front Side" button (camera/gallery)
--   "Upload Back Side" button (optional, camera/gallery)
--   Verification checkbox
--   "Continue" button
+- ID Type dropdown (Aadhaar, Passport, Driver License, etc.)
+- ID Number input field
+- "Upload Front Side" button (camera/gallery)
+- "Upload Back Side" button (optional, camera/gallery)
+- Verification checkbox
+- "Continue" button
 
 **Step Indicator:** 3 of 4
 
 **Navigation:**
 
--   Tap "Continue" → Screen 7 (Smart Meter Claim)
--   Tap back → Screen 5
+- Tap "Continue" → Screen 7 (Smart Meter Claim)
+- Tap back → Screen 5
 
 ----------
 
 ### Screen 7: Smart Meter Claim
+
 **Purpose:**  
 User links their smart meter by entering meter ID and key.
 
 **Key Elements:**
 
--   Title: "Claim Smart Meter"
--   Meter ID input field
--   Meter Key input field
--   Info box: "Don't have a meter? Request installation"
--   "Verify with DEWA" button (primary)
--   "Skip for Now" button (secondary)
+- Title: "Claim Smart Meter"
+- Meter ID input field
+- Meter Key input field
+- Info box: "Don't have a meter? Request installation"
+- "Verify with DEWA" button (primary)
+- "Skip for Now" button (secondary)
 
 **Step Indicator:** 4 of 4
 
 **Navigation:**
 
--   Tap "Verify with DEWA" → Screen 8 (DEWA Approval)
--   Tap "Skip for Now" → Screen 10 (Dashboard)
--   Tap back → Screen 6
+- Tap "Verify with DEWA" → Screen 8 (DEWA Approval)
+- Tap "Skip for Now" → Screen 10 (Dashboard)
+- Tap back → Screen 6
 
 ----------
 
 ### Screen 8: DEWA Approval Modal
+
 **Purpose:**  
 Display DEWA mock approval interface. User clicks "Approve" to link meter.
 
 **Key Elements:**
 
--   DEWA header/branding
--   User details (name, email, meter ID) - read-only
--   "GridX requests access to:" explanation
--   "Approve & Link" button (green)
--   "Deny" button
--   Terms/Privacy links
+- DEWA header/branding
+- User details (name, email, meter ID) - read-only
+- "GridX requests access to:" explanation
+- "Approve & Link" button (green)
+- "Deny" button
+- Terms/Privacy links
 
 **Navigation:**
 
--   Tap "Approve & Link" → Screen 9 (Registration Complete)
--   Tap "Deny" → Back to Screen 7
+- Tap "Approve & Link" → Screen 9 (Registration Complete)
+- Tap "Deny" → Back to Screen 7
 
 ----------
 
 ### Screen 9: Registration Complete
+
 **Purpose:**  
 Success confirmation screen. Show verified status and next steps.
 
 **Key Elements:**
 
--   Large green checkmark icon
--   Title: "Registration Complete!"
--   Verified meter display with checkmark
--   KYC status info
--   Next steps (bullet points)
--   "Go to Dashboard" button (primary)
--   "Take a Tour" button (optional)
+- Large green checkmark icon
+- Title: "Registration Complete!"
+- Verified meter display with checkmark
+- KYC status info
+- Next steps (bullet points)
+- "Go to Dashboard" button (primary)
+- "Take a Tour" button (optional)
 
 **Navigation:**
 
--   Tap "Go to Dashboard" → Screen 10 (Dashboard)
--   Tap "Take a Tour" → Onboarding slides → Screen 10
+- Tap "Go to Dashboard" → Screen 10 (Dashboard)
+- Tap "Take a Tour" → Onboarding slides → Screen 10
 
 ----------
 
 ### Screen 10: Dashboard (Main Hub)
+
 **Purpose:**  
 Home screen showing live energy data and quick actions.
 
 **Key Elements:**
 
--   Header: Menu icon, app title, user profile icon
--   Live Energy Price card (₹14.52, updating real-time)
--   Solar Generation card (3.2 kW)
--   Home Consumption card (1.8 kW)
--   Today's Earnings card (₹287.50)
--   "Place Trade Now" button (CTA)
--   Bottom tab bar: Home | Market | Wallet | Menu
+- Header: Menu icon, app title, user profile icon
+- Live Energy Price card (₹14.52, updating real-time)
+- Solar Generation card (3.2 kW)
+- Home Consumption card (1.8 kW)
+- Today's Earnings card (₹287.50)
+- "Place Trade Now" button (CTA)
+- Bottom tab bar: Home | Market | Wallet | Menu
 
 **Navigation:**
 
--   Tap "Place Trade Now" → Screen 11 (Trade Screen)
--   Tap "Market" tab → Screen 12 (Order Book & Market)
--   Tap "Wallet" tab → Screen 13 (Wallet & Transactions)
--   Tap "Menu" tab → Screen 14 (Settings/Menu)
--   Tap price card → Screen 15 (Full Price Chart)
+- Tap "Place Trade Now" → Screen 11 (Trade Screen)
+- Tap "Market" tab → Screen 12 (Order Book & Market)
+- Tap "Wallet" tab → Screen 13 (Wallet & Transactions)
+- Tap "Menu" tab → Screen 14 (Settings/Menu)
+- Tap price card → Screen 15 (Full Price Chart)
 
 ----------
 
 ### Screen 11: Place Trade (Trading)
+
 **Purpose:**  
 User places a buy or sell energy order.
 
 **Key Elements:**
 
--   Title: "Place Order"
--   Buy / Sell toggle buttons
--   Quantity input (kWh)
--   Price per kWh input (₹)
--   Total calculation display
--   "Confirm Order" button
--   Current market price display (reference)
+- Title: "Place Order"
+- Buy / Sell toggle buttons
+- Quantity input (kWh)
+- Price per kWh input (₹)
+- Total calculation display
+- "Confirm Order" button
+- Current market price display (reference)
 
 **Navigation:**
 
--   Tap "Confirm Order" → Shows confirmation modal → Back to Screen 10
--   Tap back → Screen 10
+- Tap "Confirm Order" → Shows confirmation modal → Back to Screen 10
+- Tap back → Screen 10
 
 ----------
 
 ### Screen 12: Market / Order Book
+
 **Purpose:**  
 Show current market price, order book depth, and trading activity.
 
 **Key Elements:**
 
--   Live price ticker (₹14.52, with change indicator)
--   Order book list:
-    -   Left side: Bids (buy orders)
-    -   Right side: Asks (sell orders)
--   Volume indicator
--   "Buy" and "Sell" buttons at bottom
+- Live price ticker (₹14.52, with change indicator)
+- Order book list:
+    - Left side: Bids (buy orders)
+    - Right side: Asks (sell orders)
+- Volume indicator
+- "Buy" and "Sell" buttons at bottom
 
 **Navigation:**
 
--   Tap "Buy" → Screen 11 (Place Trade)
--   Tap "Sell" → Screen 11 (Place Trade)
--   Tap home tab → Screen 10
--   Tap back → Screen 10
+- Tap "Buy" → Screen 11 (Place Trade)
+- Tap "Sell" → Screen 11 (Place Trade)
+- Tap home tab → Screen 10
+- Tap back → Screen 10
 
 ----------
 
 ### Screen 13: Wallet & Transactions
+
 **Purpose:**  
 Show account balance, transaction history, and earnings.
 
 **Key Elements:**
 
--   Current balance display (₹5,420.50)
--   Card: "Available Balance"
--   Card: "This Week Earnings"
--   Card: "Carbon Saved" (kg CO₂)
--   Transaction list:
-    -   Date, type (buy/sell), quantity, price, amount
-    -   Scrollable history
--   "Withdraw Funds" button
+- Current balance display (₹5,420.50)
+- Card: "Available Balance"
+- Card: "This Week Earnings"
+- Card: "Carbon Saved" (kg CO₂)
+- Transaction list:
+    - Date, type (buy/sell), quantity, price, amount
+    - Scrollable history
+- "Withdraw Funds" button
 
 **Navigation:**
 
--   Tap "Withdraw Funds" → Withdrawal form (new screen)
--   Swipe transaction → See details
--   Tap home tab → Screen 10
+- Tap "Withdraw Funds" → Withdrawal form (new screen)
+- Swipe transaction → See details
+- Tap home tab → Screen 10
 
 ----------
 
 ### Screen 14: Menu / Settings
+
 **Purpose:**  
 Access account settings, profile, alerts, and logout.
 
 **Key Elements:**
 
--   "Edit Profile" button
--   "Price Alerts" button (set thresholds)
--   "Account Settings" button
--   "Help & Support" button
--   "Terms & Privacy" link
--   "Logout" button
+- "Edit Profile" button
+- "Price Alerts" button (set thresholds)
+- "Account Settings" button
+- "Help & Support" button
+- "Terms & Privacy" link
+- "Logout" button
 
 **Navigation:**
 
--   Tap "Edit Profile" → Profile edit screen
--   Tap "Price Alerts" → Alert settings screen
--   Tap "Logout" → Returns to login screen
--   Tap home tab → Screen 10
+- Tap "Edit Profile" → Profile edit screen
+- Tap "Price Alerts" → Alert settings screen
+- Tap "Logout" → Returns to login screen
+- Tap home tab → Screen 10
 
 ----------
 
 ### Screen 15: Full Price Chart
+
 **Purpose:**  
 Display candlestick OHLCV price chart with zoom and time controls.
 
 **Key Elements:**
 
--   Candlestick chart (full screen)
--   Timeframe selector (1m, 5m, 1h, 1d, 1w)
--   Current price display
--   Zoom controls
--   Tap on candle for details
+- Candlestick chart (full screen)
+- Timeframe selector (1m, 5m, 1h, 1d, 1w)
+- Current price display
+- Zoom controls
+- Tap on candle for details
 
 **Navigation:**
 
--   Tap back → Screen 10
--   Tap candle → Show OHLCV details popup
+- Tap back → Screen 10
+- Tap candle → Show OHLCV details popup
 
 ----------
 
@@ -752,28 +775,28 @@ Display candlestick OHLCV price chart with zoom and time controls.
 
 Available on Dashboard and all app screens (10-15):
 
--   **Home** → Dashboard (Screen 10)
--   **Market** → Order Book (Screen 12)
--   **Wallet** → Balance & Transactions (Screen 13)
--   **Menu** → Settings (Screen 14)
+- **Home** → Dashboard (Screen 10)
+- **Market** → Order Book (Screen 12)
+- **Wallet** → Balance & Transactions (Screen 13)
+- **Menu** → Settings (Screen 14)
 
 ----------
 
 ## Key Design Notes
 
-1.  **Registration screens (1-9):** Linear flow, can't skip steps
-2.  **App screens (10+):** Tab-based navigation, can jump between any tab
-3.  **Real-time updates:** Dashboard updates every 500ms (price), every 5s (solar generation)
-4.  **Back button behavior:** Returns to previous screen in registration, or stays on same tab in app
-5.  **Error states:** Shown as inline messages below form fields or toast notifications
+1. **Registration screens (1-9):** Linear flow, can't skip steps
+2. **App screens (10+):** Tab-based navigation, can jump between any tab
+3. **Real-time updates:** Dashboard updates every 500ms (price), every 5s (solar generation)
+4. **Back button behavior:** Returns to previous screen in registration, or stays on same tab in app
+5. **Error states:** Shown as inline messages below form fields or toast notifications
 
 ----------
 
 ## Notes for Development
 
--   All screens are mobile-first (no desktop version here)
--   Use React Native (Expo) components
--   Use bottom tab navigation for app screens (10+)
--   Use stack navigation for registration flow (1-9)
--   Store JWT token after Screen 4 (email verification)
--   WebSocket connection for live price on Screen 10+
+- All screens are mobile-first (no desktop version here)
+- Use React Native (Expo) components
+- Use bottom tab navigation for app screens (10+)
+- Use stack navigation for registration flow (1-9)
+- Store JWT token after Screen 4 (email verification)
+- WebSocket connection for live price on Screen 10+

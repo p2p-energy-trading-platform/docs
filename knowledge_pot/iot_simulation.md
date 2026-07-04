@@ -82,7 +82,7 @@ Simply, the backend should send actuation commands down to the simulator via MQT
 1. Introduce inbound topics for specific device
 1. The backend (or dispatch manager) calculates the physical consequence and publishes an adjustment command (dispatch schedule command) to MQTT. Example command:
 
-    ```
+    ```json
     {
         "command": "set_battery_rate_kw",
         "target_kw": -2.0, 

@@ -119,7 +119,6 @@ Begin matching
 
 The Matching Engine should not begin matching until the GridTransferCache is ready.
 
-
 ## In-Memory Cache Structure
 
 The Matching Engine stores grid transfer rules in memory.
@@ -166,8 +165,3 @@ If transfer is not allowed, the candidate order is skipped.
 If no rule exists for a zone pair, the safest default is:
 
 **transfer not allowed**
-
-
-
-
-
