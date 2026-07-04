@@ -18,7 +18,7 @@ jobs:
       - name: Publish Markdown Docs to Confluence
         uses: markdown-confluence/publish-action@v5
         with:
-          confluenceBaseUrl: 'https://vidushan145.atlassian.net' 
+          confluenceBaseUrl: 'https://vidushan145.atlassian.net/wiki' 
           confluenceParentId: '5472427'   
           atlassianUserName: 'vidurshan145@gmail.com'
           atlassianApiToken: ${{ secrets.ATLASSIAN_API_TOKEN }} 
