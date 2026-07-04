@@ -1,4 +1,4 @@
-## Introduction to data pipelines
+# Introduction to data pipelines
 
 This document covers both the overall and indepth plan of the data pipelines.
 

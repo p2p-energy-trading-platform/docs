@@ -1,4 +1,4 @@
-### Introduction to knowledge base
+# Introduction to knowledge base
 
 Write quick knowledge info, constraints or researched ideas/infos that are not completley verified with our system (either based on compatibility/feasibility/etc).
 
