@@ -1,4 +1,4 @@
-## Introduction
+# Introduction
 
 This repository contains all the necessary documents relavant to our 3rd year project. Everyone currently related to our group is encouraged to add their new research on project requirements or even implementation plans for some sections under this repository.
 
