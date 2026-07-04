@@ -76,24 +76,26 @@ for (const file of markdownFiles) {
     fs.writeFileSync(mmdPath, mermaidSource.trim() + "\n", "utf8");
 
     execFileSync(
-      "npx",
-      [
-        "-y",
-        "@mermaid-js/mermaid-cli",
-        "-i",
-        mmdPath,
-        "-o",
-        svgPath,
-      ],
-      {
-        stdio: "inherit",
-        env: {
-          ...process.env,
-          PUPPETEER_SKIP_DOWNLOAD: "true",
-          PUPPETEER_EXECUTABLE_PATH:
-            process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium",
-        },
-      }
+        "npx",
+        [
+            "-y",
+            "@mermaid-js/mermaid-cli",
+            "-p",
+            ".mermaid-puppeteer.json",
+            "-i",
+            mmdPath,
+            "-o",
+            svgPath,
+        ],
+        {
+            stdio: "inherit",
+            env: {
+            ...process.env,
+            PUPPETEER_SKIP_DOWNLOAD: "true",
+            PUPPETEER_EXECUTABLE_PATH:
+                process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium",
+            },
+        }
     );
 
     index += 1;
