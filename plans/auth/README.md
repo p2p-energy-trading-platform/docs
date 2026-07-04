@@ -1,5 +1,5 @@
 ---
-title: Authentication Plan
+connie-title: Authentication Plan
 ---
 
 # Authentication Plan

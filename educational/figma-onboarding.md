@@ -1,5 +1,5 @@
 ---
-title: Figma Education Plan Verification Guide
+connie-title: Figma Education Plan Verification Guide
 ---
 
 # Figma Education Plan Verification Guide

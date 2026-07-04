@@ -1,5 +1,5 @@
 ---
-title: Registration Plan
+connie-title: Registration Plan
 ---
 
 ## Registration Plan

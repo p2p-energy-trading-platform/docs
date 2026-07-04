@@ -1,5 +1,5 @@
 ---
-title: IoT Simulator - Plan
+connie-title: IoT Simulator - Plan
 ---
 
 # IoT Simulator - Plan

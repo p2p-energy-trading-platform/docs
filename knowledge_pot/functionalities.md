@@ -1,5 +1,5 @@
 ---
-title: Prosumer Functionalities
+connie-title: Prosumer Functionalities
 ---
 
 # Prosumer Functionalities

@@ -1,5 +1,5 @@
 ---
-title: Project Documentation Home
+connie-title: Project Documentation Home
 ---
 
 # Introduction

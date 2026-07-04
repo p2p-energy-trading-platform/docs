@@ -1,5 +1,5 @@
 ---
-title: Base
+connie-title: Base
 ---
 
 ## Architecture overview

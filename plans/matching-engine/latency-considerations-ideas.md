@@ -1,5 +1,5 @@
 ---
-title: Latency Considerations
+connie-title: Latency Considerations
 ---
 
 # Latency Considerations

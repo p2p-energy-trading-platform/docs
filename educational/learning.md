@@ -1,5 +1,5 @@
 ---
-title: Learning
+connie-title: Learning
 ---
 
 ## Project Educational Information

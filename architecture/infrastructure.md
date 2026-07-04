@@ -1,5 +1,5 @@
 ---
-title: GridX Infrastructure
+connie-title: GridX Infrastructure
 ---
 
 # GridX Infrastructure

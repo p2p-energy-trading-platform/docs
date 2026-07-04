@@ -1,5 +1,5 @@
 ---
-title: Introduction to Market Ticker Service
+connie-title: Introduction to Market Ticker Service
 ---
 
 # Introduction to Market Ticker Service

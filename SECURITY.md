@@ -1,5 +1,5 @@
 ---
-title: Project Security Document
+connie-title: Project Security Document
 ---
 
 # Security Guidelines
