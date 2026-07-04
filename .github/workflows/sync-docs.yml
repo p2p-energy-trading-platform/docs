@@ -50,5 +50,5 @@ jobs:
           confluenceParentId: '5472427'   
           atlassianUserName: 'vidurshan145@gmail.com'
           atlassianApiToken: ${{ secrets.ATLASSIAN_API_TOKEN }} 
-          folderToPublish: ".confluence-publish"                              
+          folderToPublish: "."                              
           contentRoot: ".confluence-publish"
