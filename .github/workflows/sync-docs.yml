@@ -18,6 +18,8 @@ jobs:
 
       - name: Publish Markdown Docs to Confluence
         uses: markdown-confluence/publish-action@v5
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
         with:
           confluenceBaseUrl: 'https://vidurshan145.atlassian.net' 
           confluenceParentId: '5472427'   
