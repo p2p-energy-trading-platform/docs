@@ -79,6 +79,20 @@
 
 ---
 
+### US-1.6 — House generation from config ratios
+>**As** the simulation engine, <br>
+>**I want** actual house objects to be generated from the ratios and counts defined in the grid config, <br>
+>**so that** the simulator has a concrete set of houses to run against without requiring each house to be manually specified.
+
+*Maps to: `src/domain/HouseFactory.ts`*
+
+**Acceptance Criteria:**
+- The correct total number of houses is generated per grid, matching the count defined in config.
+- Each house is assigned a device_class (consumer, residential_prosumer, or commercial) according to prosumer_ratio and commercial_count values in the config.
+- Each house is assigned a load_archetype, load_scale_factor, rated_solar_kw, and panel_efficiency_factor appropriate to its device class - commercial houses receive commercial-sized values, not residential-sized ones.
+
+---
+
 ## 2. Weather Data Integration
 
 ### US-2.1 — Fetch live weather data from Open-Meteo
@@ -168,6 +182,20 @@
 
 ---
 
+### US-3.4 — Receive and apply MQTT actuation commands
+>**As** the simulation engine, <br>
+>**I want** to receive actuation commands over MQTT and apply them to the relevant house's flexible asset state, <br>
+>**so that** the Matching Engine can instruct batteries and EVs to charge or discharge, and those changes are reflected in subsequent meter readings.
+
+*Maps to: `src/mqtt/mqttClient.ts (extend)`, `src/store/simState.ts (extend)`*
+
+**Acceptance Criteria:**
+- The MQTT client subscribes to the actuation command topic on startup.
+- An incoming command correctly identifies the target house and asset by ID and applies the specified charge or discharge instruction to that asset's state in SimState.
+- The updated state of charge is reflected in the very next tick's smart meter reading for that house.
+
+---
+
 ## 4. Simulator State & Reliability
 
 ### US-4.1 — In-memory simulation state
@@ -212,6 +240,19 @@
 
 ---
 
+### US-5.2 — Load and zone isolation testing
+>**As** a platform engineer, <br>
+>**I want** a load test script and a zone isolation test script for the IoT simulation layer, <br>
+>**so that** I can verify the system handles at least 50 concurrent publishers across 3 grid zones without message loss or cross-grid data contamination.
+
+*Maps to: `test/load/`, `test/isolation/`*
+
+**Acceptance Criteria:**
+- A k6 load test script starts 50 or more concurrent meter instances spread across at least 3 grid zones simultaneously.
+- All meters publish at the correct 5-second interval throughout the load test run without falling behind or dropping messages at QoS 1.
+- A zone isolation test script subscribes to all topics and verifies that every published reading's grid_id matches the grid zone it was generated from — zero mismatches across a full test run.
+
+---
 
 ## Summary Table
 
@@ -222,14 +263,18 @@
 | US-1.3 | Load simulation | `domain/LoadSimulator.ts` |
 | US-1.4 | Flexible asset simulation | `domain/FlexibleAssetSimulator.ts` |
 | US-1.5 | Smart meter reading | `domain/SmartMeter.ts` |
+| US-1.6 | House generation from config ratios | `src/domain/HouseFactory.ts` |
 | US-2.1 | Fetch live weather data | `weather/openMeteoClient.ts` |
 | US-2.2 | Clear-sky fallback model | `weather/clearSkyFallback.ts` |
 | US-2.3 | Unified weather provider | `weather/weatherProvider.ts` |
 | US-3.1 | Tick loop scheduler | `scheduler/tickLoop.ts` |
 | US-3.2 | MQTT topic publishing | `mqtt/topics.ts`, `mqtt/mqttClient.ts` |
 | US-3.3 | MQTT reconnection | `mqtt/mqttClient.ts` |
+| US-3.4 | Receive and apply MQTT actuation commands | `src/mqtt/mqttClient.ts (extend)`, `src/store/simState.ts (extend)` |
 | US-4.1 | In-memory state | `store/simState.ts` |
 | US-4.2 | Typed schemas | `types/payloads.ts`, `types/config.ts` |
 | US-5.1 | Unit test coverage | `test/` |
+| US-5.2 | Load and zone isolation testing | `test/load/`, `test/isolation/` |
+
 
 ---
