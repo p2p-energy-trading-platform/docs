@@ -1,5 +1,5 @@
 ---
-title: Commit Workflow
+connie-title: Commit Workflow
 ---
 
 # Commit Workflow

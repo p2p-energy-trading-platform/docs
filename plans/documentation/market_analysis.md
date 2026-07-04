@@ -1,5 +1,5 @@
 ---
-title: GridX — Market Benchmarking & Competitive Analysis Report
+connie-title: GridX — Market Benchmarking & Competitive Analysis Report
 ---
 
 # GridX — Market Benchmarking & Competitive Analysis Report

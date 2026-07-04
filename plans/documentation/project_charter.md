@@ -1,5 +1,5 @@
 ---
-title: GridX — Project Charter
+connie-title: GridX — Project Charter
 ---
 
 # GridX — Project Charter

@@ -1,5 +1,5 @@
 ---
-title: Introduction to data pipelines
+connie-title: Introduction to data pipelines
 ---
 
 # Introduction to data pipelines

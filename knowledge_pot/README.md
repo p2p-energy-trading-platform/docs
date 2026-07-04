@@ -1,5 +1,5 @@
 ---
-title: Introduction to knowledge base
+connie-title: Introduction to knowledge base
 ---
 
 # Introduction to knowledge base

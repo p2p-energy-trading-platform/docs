@@ -1,5 +1,5 @@
 ---
-title: Auth
+connie-title: Auth
 ---
 
 ## Auth Knowledge Quick Infos

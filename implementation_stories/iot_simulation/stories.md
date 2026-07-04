@@ -1,5 +1,5 @@
 ---
-title: IoT Simulation — User Stories
+connie-title: IoT Simulation — User Stories
 ---
 
 # IoT Simulation — User Stories

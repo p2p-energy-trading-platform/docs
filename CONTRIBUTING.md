@@ -1,5 +1,5 @@
 ---
-title: Project Contribution Document
+connie-title: Project Contribution Document
 ---
 
 # Contributing Guidelines

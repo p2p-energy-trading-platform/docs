@@ -1,5 +1,5 @@
 ---
-title: Diagram Overview
+connie-title: Diagram Overview
 ---
 
 ## Diagram overview

@@ -1,5 +1,5 @@
 ---
-title: Repository Configuration
+connie-title: Repository Configuration
 ---
 
 ## Repository Configuration
