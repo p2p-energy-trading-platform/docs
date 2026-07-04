@@ -8,7 +8,6 @@ connie-title: Matching Engine Workflow
 
 This document explains how the Matching Engine processes incoming orders and generates completed trades.
 
-
 ---
 
 ## High Level Flow
@@ -126,6 +125,7 @@ style MD fill:#FCE7F3
 style SS fill:#FCE7F3
 style NS fill:#FCE7F3
 ```
+
 ---
 
 ## Flow Explanation
@@ -178,7 +178,6 @@ Market Book: ENERGY / 10:00–10:30
 ```
 
 The order's grid zone is still stored, but it is used as the participant location, not as the only matching boundary.
-
 
 ---
 

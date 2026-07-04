@@ -13,7 +13,7 @@ This document provides a step-by-step procedure for team contributors to verify 
 Figma validates educational eligibility based on institutional email domains. Before initiating the application, ensure your account credentials match your university registration.
 
 1. Navigate to your Figma Account Settings.
-2. Verify that your primary account email is your official university-issued email address. 
+2. Verify that your primary account email is your official university-issued email address.
 3. If you are currently registered with a personal email (such as Gmail), update your profile email to your institutional address before proceeding to prevent automated rejection.
 
 ---
@@ -34,7 +34,7 @@ Figma validates educational eligibility based on institutional email domains. Be
 
 Because automated database matching via SheerID is not supported for our institution, a manual identity and enrollment check is required.
 
-1. Prepare a clear, high-resolution photo or scan of our **Physical Student ID card**. 
+1. Prepare a clear, high-resolution photo or scan of our **Physical Student ID card**.
 2. Click **Add documents** on the verification screen and upload the file.
 3. Submit the form. Following successful document upload with exactly matching name constraints, manual processing and verification approval typically conclude within 5 minutes.
 

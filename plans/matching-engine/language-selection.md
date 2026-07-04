@@ -124,7 +124,6 @@ Following additional research into matching engine architectures, performance re
 
 This decision is based on the current understanding of the project requirements and may be revisited if future requirements or technical constraints change.
 
-
 ## Conclusion
 
 C++ was selected as the primary language for the Matching Engine because it provides high performance, predictable latency, direct memory control, and is commonly used in performance-critical trading systems.

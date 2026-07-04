@@ -1,0 +1,67 @@
+name: Validate Documentation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "**/*.md"
+      - "**/*.png"
+      - "**/*.jpg"
+      - "**/*.jpeg"
+      - "**/*.svg"
+      - "**/*.gif"
+      - "**/*.webp"
+      - "scripts/validate-docs.js"
+      - "scripts/prepare-confluence-docs.js"
+      - ".mermaid-puppeteer.json"
+      - ".markdownlint-cli2.jsonc"
+      - ".github/workflows/validate-docs.yml"
+
+  workflow_dispatch:
+
+jobs:
+  validate-docs:
+    name: Validate Markdown and Confluence Compatibility
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Validate required Confluence front matter
+        run: |
+          node scripts/validate-docs.js .
+
+      - name: Run Markdown lint
+        run: |
+          npx -y markdownlint-cli2 "**/*.md" "#node_modules" "#.confluence-publish"
+
+      - name: Install Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium
+
+      - name: Prepare temporary Confluence publish copy
+        run: |
+          rm -rf .confluence-publish
+          mkdir -p .confluence-publish
+
+          rsync -av \
+            --exclude=".git" \
+            --exclude=".github" \
+            --exclude="node_modules" \
+            --exclude=".confluence-publish" \
+            ./ .confluence-publish/
+
+      - name: Validate Mermaid conversion for Confluence
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+        run: |
+          node scripts/prepare-confluence-docs.js
+
+      - name: Confirm converted publish copy has Markdown files
+        run: |
+          test -n "$(find .confluence-publish -name '*.md' -print -quit)"
+          echo "Confluence publish copy is valid."

@@ -10,13 +10,11 @@ We use the following build system for our C++ project:
 1. Ninja - Ninja is a small, low-level build system focused entirely on speed and efficiency. CMake can generate Ninja files.
 1. Conan - Conan is like Maven/npm/go modules because it handles C/C++ dependencies and versions. It works with CMake and can manage libraries.
 
-
 ## Folder structure
 
 The following folder structure can be used for matching engine
 
-
-```
+```text
 matching-engine/
 ├── CMakeLists.txt
 ├── CMakePresets.json
@@ -203,6 +201,7 @@ matching-engine/
     cmake --preset debug
     cmake --build build/debug
     ```
+
 * `conanfile.txt`
 
     C++ dependency file for conan (like a package manager). It declares external libraries for our project.
@@ -240,7 +239,7 @@ matching-engine/
 
     Example:
 
-    ```
+    ```text
     BasedOnStyle: Google
     IndentWidth: 4
     ColumnLimit: 100
@@ -258,7 +257,7 @@ matching-engine/
 
     This defines static analysis rules. `clang-tidy` checks code for potential bugs, unsafe patterns, performance issues, and style problems.
 
-    ```
+    ```text
     Checks: >
         bugprone-*,
         performance-*,

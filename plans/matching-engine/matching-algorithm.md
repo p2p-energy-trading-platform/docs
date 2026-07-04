@@ -135,7 +135,6 @@ grid_fee = 0
 
 For cross-zone trades, the grid fee is taken from the Grid Transfer Cache.
 
-
 If no matching order exists:
 
 * Store the order in the Order Book.
@@ -260,6 +259,7 @@ Publish Order Status Updates
 Publishing events after the matching process keeps the Order Book in a consistent state.
 
 ---
+
 ## Design Decisions
 
 ### Decision 1
@@ -321,5 +321,3 @@ Publishing events after all matching is complete keeps the matching process cons
 * Each Market Book will contain Zone Order Books.
 * Cross-zone matching will be controlled by Grid Transfer Policy.
 * Active Order Books are maintained in memory to achieve low-latency matching.
-
-

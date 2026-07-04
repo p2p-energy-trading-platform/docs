@@ -78,7 +78,7 @@ These responsibilities belong to other services within the GridX platform.
 
 The Matching Engine receives completed order events and returns completed trade events.
 
-```
+```text
 Order Service
 
 ↓
@@ -138,7 +138,7 @@ Keeping responsibilities separate makes the implementation easier to test, maint
 
 The Matching Engine stores active Order Books entirely in memory.
 
-```
+```text
 Order Book
 
 ↓
@@ -192,7 +192,7 @@ Incoming orders are received as events.
 
 Completed trades are published as events.
 
-```
+```text
 Order Event
 
 ↓
@@ -260,7 +260,7 @@ The Matching Engine does not distinguish between manual and automatic orders.
 
 Both follow exactly the same processing pipeline.
 
-```
+```text
 Manual Order
 
             ↓
@@ -315,7 +315,6 @@ These include:
 * Lightweight internal components with clear responsibilities
 
 Future versions may introduce additional optimizations such as lock-free data structures, memory pools, or multiple Matching Engine instances if higher throughput becomes necessary.
-
 
 # 4. Internal Processing Flow
 
@@ -696,7 +695,7 @@ Inside a price level, orders are processed by arrival order.
 
 Example:
 
-```
+```text
 Price 25
 
 Order A   10:00
@@ -1208,8 +1207,6 @@ Orders are valid only for their assigned 30-minute delivery slot.
 
 When the delivery slot ends, any remaining unmatched quantity automatically expires and is no longer available for trading.
 
-
-
 ---
 
 # 7. Internal Components
@@ -1714,17 +1711,13 @@ Each Market Book is protected by a shared mutex, and each Zone Order Book has it
 
 The `std::map<Price, std::deque<Order>>` data structure requires mutex protection for all access, as it is not thread-safe.
 
-
-
 ---
 
 # 10. Project Structure
 
 The following folder structure can be used for matching engine
 
-
-
-```
+```text
 matching-engine/
 ├── CMakeLists.txt
 ├── CMakePresets.json

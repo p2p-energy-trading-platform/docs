@@ -57,4 +57,3 @@ Security is critical for a peer-to-peer energy trading platform. This project ha
 ## Incident and disclosure
 
 **NOTE**: Will be filled later
-

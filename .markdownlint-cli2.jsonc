@@ -1,0 +1,45 @@
+{
+  "globs": ["**/*.md"],
+  "ignores": [
+    "node_modules/**",
+    ".git/**",
+    ".github/**",
+    ".confluence-publish/**"
+  ],
+  "config": {
+    "default": true,
+
+    // Your docs start with connie-title front matter, not H1.
+    "MD041": false,
+
+    // Long technical lines, URLs, Mermaid labels, tables, and explanations are common.
+    "MD013": false,
+
+    // Multiple H1s are acceptable for long Confluence docs.
+    "MD025": false,
+
+    // Heading levels in existing docs are not always strict, but Confluence can still render them.
+    "MD001": false,
+
+    // Do not force one list marker style across all files.
+    "MD004": false,
+
+    // Do not force nested list indentation style.
+    "MD007": false,
+
+    // Allow headings ending with ":" because docs often use "Example:" / "Notes:".
+    "MD026": false,
+
+    // Allow emphasis-as-heading because some docs use bold labels as sections.
+    "MD036": false,
+
+    // Allow inline HTML like <br>, especially inside Mermaid or formatted docs.
+    "MD033": false,
+
+    // Tables do not need perfect alignment for Confluence to render them.
+    "MD060": false,
+
+    // Duplicate headings are acceptable in long docs with repeated sections.
+    "MD024": false
+  }
+}
