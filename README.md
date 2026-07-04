@@ -23,3 +23,5 @@ This project is a real-time, peer-to-peer energy exchange designed to eliminate 
 ### Team roles
 
 **NOTE**: Due to complexity of this project and university module working hours constraint it is not feasible to complete this project by working under fixed roles. Everyone will probably touch on several disciplines at any particular time in this project's lifetime!
+
+--------
