@@ -1,3 +1,7 @@
+---
+title: Auth
+---
+
 ## Auth Knowledge Quick Infos
 
 ### Registration flow

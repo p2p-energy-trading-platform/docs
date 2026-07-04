@@ -1,3 +1,7 @@
+---
+title: Figma Education Plan Verification Guide
+---
+
 # Figma Education Plan Verification Guide
 
 This document provides a step-by-step procedure for team contributors to verify their student status and unlock Figma Professional features at no cost.

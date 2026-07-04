@@ -1,3 +1,7 @@
+---
+title: Base
+---
+
 ## Architecture overview
 
 This document contains our intial idea about the architecture diragram that we have researched upon. We have chosen event driven microservices architecture for this sytem.

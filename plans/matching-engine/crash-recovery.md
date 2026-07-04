@@ -1,3 +1,7 @@
+---
+title: Crash Recovery
+---
+
 # Crash Recovery
 
 ## Purpose

@@ -1,3 +1,7 @@
+---
+title: Grid Fee Cache
+---
+
 # Grid Fee Cache
 
 ## Purpose

@@ -1,3 +1,7 @@
+---
+title: GridX Infrastructure
+---
+
 # GridX Infrastructure
 
 The following services needs to be bootstrapped for the infrastructure:

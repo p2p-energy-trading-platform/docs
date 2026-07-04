@@ -1,3 +1,7 @@
+---
+title: IoT Ingestion & Dispatch Service
+---
+
 # IoT Ingestion & Dispatch Service
 
 This service sits behind the apache kafka. It is part of data pipeline and handles both iot smart meter feed data ingestion as well as dispatch pipeline for houses with batteries and energy storage mediums.

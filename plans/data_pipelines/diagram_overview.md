@@ -1,3 +1,7 @@
+---
+title: Diagram Overview
+---
+
 ## Diagram overview
 
 **NOTE**: Does not include the complete system or plan. All kafka and redis topic/key names mentioned in this diagram are not finalized

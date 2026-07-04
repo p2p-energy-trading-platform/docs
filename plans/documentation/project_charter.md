@@ -1,3 +1,7 @@
+---
+title: GridX — Project Charter
+---
+
 # GridX — Project Charter
 
 ## General Project Information

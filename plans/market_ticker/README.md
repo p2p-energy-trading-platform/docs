@@ -1,3 +1,7 @@
+---
+title: Introduction to Market Ticker Service
+---
+
 # Introduction to Market Ticker Service
 
 This service handles listening to closed trades from a kafka topic and tehn formulating candles for real time, hot and warm storage as well as pushing the candles back to kafka so it will be later stored in cold storage by appropriate tools.

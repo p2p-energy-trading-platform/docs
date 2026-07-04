@@ -1,3 +1,7 @@
+---
+title: Latency Considerations
+---
+
 # Latency Considerations
 
 ## Purpose
