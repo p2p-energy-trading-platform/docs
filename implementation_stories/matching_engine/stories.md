@@ -4,10 +4,10 @@ connie-title: Matching Engine — User Stories
 
 # Matching Engine — User Stories
 
-**Epic:** Matching Engine
+* **Epic:** Matching Engine
 * **Repository:** [p2p-energy-trading-platform/matching-engine](https://github.com/p2p-energy-trading-platform/matching-engine)
-**Language:** C++20
-**Status:** Draft
+* **Language:** C++20
+* **Status:** Draft
 
 > This document breaks the Matching Engine epic into component-level user stories mapped directly to the implementation plan, components document, matching algorithm, order book design, crash recovery, grid fee cache, domain objects, and folder structure documents. Each story includes acceptance criteria for Jira ticket creation.
 
