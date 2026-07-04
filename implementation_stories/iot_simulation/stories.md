@@ -249,8 +249,8 @@
 
 **Acceptance Criteria:**
 - A k6 load test script starts 50 or more concurrent meter instances spread across at least 3 grid zones simultaneously.
-- All meters publish at the correct 5-second interval throughout the load test run without falling behind or dropping messages at QoS 1.
-- A zone isolation test script subscribes to all topics and verifies that every published reading's grid_id matches the grid zone it was generated from — zero mismatches across a full test run.
+- All meters publish at the correct 5-second interval throughout the load test run without falling behind or dropping messages.
+- A zone isolation test script subscribes to all topics and verifies that every published reading's grid_id matches the grid zone it was generated from - zero mismatches across a full test run.
 
 ---
 
