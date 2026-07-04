@@ -89,7 +89,7 @@
 **Acceptance Criteria:**
 - The correct total number of houses is generated per grid, matching the count defined in config.
 - Each house is assigned a device_class (consumer, residential_prosumer, or commercial) according to prosumer_ratio and commercial_count values in the config.
-- Each house is assigned a load_archetype, load_scale_factor, rated_solar_kw, and panel_efficiency_factor appropriate to its device class — commercial houses receive commercial-sized values, not residential-sized ones.
+- Each house is assigned a load_archetype, load_scale_factor, rated_solar_kw, and panel_efficiency_factor appropriate to its device class - commercial houses receive commercial-sized values, not residential-sized ones.
 
 ---
 
