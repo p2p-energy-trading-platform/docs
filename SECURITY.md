@@ -1,3 +1,6 @@
+---
+title: Project Security Document
+---
 
 # Security Guidelines
 

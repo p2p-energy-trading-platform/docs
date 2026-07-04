@@ -1,3 +1,7 @@
+---
+title: Project Contribution Document
+---
+
 # Contributing Guidelines
 
 **NOTE**: This is just a boilerplate. I will update this once everything is set up and I have confirmed about the usual workflow (contribution process) with vidurshan and keeththigan.

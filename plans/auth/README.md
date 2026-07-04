@@ -1,3 +1,7 @@
+---
+title: Authentication Plan
+---
+
 # Authentication Plan
 
 Plans for authentication is stored here.

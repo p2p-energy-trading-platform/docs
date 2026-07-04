@@ -1,3 +1,7 @@
+---
+title: IoT Simulator - Plan
+---
+
 # IoT Simulator - Plan
 
 * **Author:** Hanan (M.S.H. Ahmed)

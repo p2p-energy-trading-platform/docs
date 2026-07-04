@@ -1,3 +1,7 @@
+---
+title: Prosumer Functionalities
+---
+
 # Prosumer Functionalities
 
 ## Overview

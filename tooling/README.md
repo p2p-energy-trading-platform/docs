@@ -1,3 +1,7 @@
+---
+title: Tooling Document
+---
+
 # Tooling
 
 This folder contains short docs for developer tools and workflow helpers used by the project.

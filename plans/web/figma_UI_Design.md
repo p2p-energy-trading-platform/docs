@@ -1,3 +1,7 @@
+---
+title: Figma Design Doc
+---
+
 # Peer-to-Peer Energy Trading Platform UI Design
 
 ## Objective

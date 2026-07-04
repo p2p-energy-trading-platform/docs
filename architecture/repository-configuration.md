@@ -1,3 +1,7 @@
+---
+title: Repository Configuration
+---
+
 ## Repository Configuration
 
 Since we are doing a muli repository setup, we have to streamline orchestrating the multi repo setup.

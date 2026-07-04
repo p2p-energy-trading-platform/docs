@@ -1,3 +1,7 @@
+---
+title: Commit Workflow
+---
+
 # Commit Workflow
 
 This page explains three tools we can use to manage commit messages and staged files.

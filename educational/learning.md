@@ -1,3 +1,7 @@
+---
+title: Learning
+---
+
 ## Project Educational Information
 
 This document contains external knowledge base relavant to concepts, technologies and languages that you need to learn inorder to contribute building this projects. Feel free to add more external resources. You can add youtube links, documents, articles, etc OR even better if you can include it as `.md` files under this `learning/` directory.

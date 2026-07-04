@@ -1,3 +1,7 @@
+---
+title: Web UI Plan
+---
+
 # Web UI Plan – Peer-to-Peer Energy Trading Platform
 
 ## Project Overview
