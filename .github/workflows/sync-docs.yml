@@ -16,10 +16,35 @@ jobs:
       - name: Checkout Codebase
         uses: actions/checkout@v4
 
+      - name: Install Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium
+
+      - name: Prepare Confluence publish copy
+        run: |
+          rm -rf .confluence-publish
+          mkdir -p .confluence-publish
+
+          rsync -av \
+            --exclude=".git" \
+            --exclude=".github" \
+            --exclude="node_modules" \
+            --exclude=".confluence-publish" \
+            ./ .confluence-publish/
+
+      - name: Convert Mermaid blocks to SVG images
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+        run: |
+          node scripts/prepare-confluence-docs.js
+
       - name: Publish Markdown Docs to Confluence
         uses: markdown-confluence/publish-action@v5
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
         with:
           confluenceBaseUrl: 'https://vidurshan145.atlassian.net' 
           confluenceParentId: '5472427'   
