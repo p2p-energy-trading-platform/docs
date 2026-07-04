@@ -5,7 +5,8 @@ on:
     branches:
       - main  
     paths:
-      - 'docs/**'  
+      - '**/*.md'
+  workflow_dispatch:  
 
 jobs:
   publish:
