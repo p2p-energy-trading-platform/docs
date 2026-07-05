@@ -16,7 +16,7 @@ The following folder structure can be used for matching engine
 matching-engine/
 ├── CMakeLists.txt
 ├── CMakePresets.json
-├── conanfile.txt
+├── conanfile.py
 ├── README.md
 ├── .clang-format
 ├── .clang-tidy
