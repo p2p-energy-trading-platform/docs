@@ -1,7 +1,8 @@
 ---
 connie-title: JWT Token Management Plan for P2P Energy Trading Platform
 ---
-## 1. Introduction
+
+# 1. Introduction
 
 This document defines the JWT (JSON Web Token) management strategy used by the P2P Energy Trading Platform.
 
@@ -29,30 +30,29 @@ The authentication system uses two types of tokens:
 
 The authentication flow follows this architecture:
 
-```
+```text
       Login Credentials                            Validate User
-User  -------------------> Authentication Service -------------------> Generate JWT Tokens 
+User -------------------> Authentication Service -------------------> Generate JWT Tokens
                                                                              |
                                                                              |
-                                                                             | 
-                                                                             |  
+                                                                             |
+                                                                             |
                                                                              v
-                                                                        ------------------     
-                                                                        |                |
+                                                                    +------------------+
+                                                                    |                  |
+                                                                    +------------------+
+                                                                       |            |
+                                                                       v            v
 
-                                                                        v                v
-
-                                                                        Access Token     Refresh Token            Token
-                                                                                   |
-                                                                                   v
-                                                                         Access P2P Energy Trading Services
-   
-
-
+                                                                 Access Token   Refresh Token
+                                                                        |
+                                                                        v
+                                                       Access P2P Energy Trading Services
+```
 
 After successful authentication, the user can access authorized platform features based on their role.
 
-
+---
 
 # 3. JWT Token Types
 
@@ -70,40 +70,31 @@ An access token is a short-lived token used to authenticate API requests.
 
 The access token is attached to API requests:
 
-```
-
+```http
 Authorization: Bearer <access_token>
-
 ```
 
+### Access Token Characteristics
 
----
-
-## Access Token Characteristics
-
---------------------------------------------------
-| Property   | Description                        |
-|------------|------------------------------------|
-| Lifetime   | Short duration                     |
-| Usage      | API authentication                 |
-| Storage    | Secure client storage              |
-| Expiration | Requires renewal after expiry      |
+| Property | Description |
+|----------|-------------|
+| Lifetime | Short duration |
+| Usage | API authentication |
+| Storage | Secure client storage |
+| Expiration | Requires renewal after expiry |
 | Validation | Checked on every protected request |
----------------------------------------------------
 
 Example lifetime:
 
-```
-
-Access Token Expiry:
+```text
+Access Token Expiry
 
 15 minutes
-
 ```
 
 ---
 
-# 3.2 Refresh Token
+## 3.2 Refresh Token
 
 A refresh token is a long-lived token used to generate a new access token after expiration.
 
@@ -113,42 +104,34 @@ A refresh token is a long-lived token used to generate a new access token after 
 - Avoid repeated login
 - Provide continuous platform access
 
+### Refresh Token Characteristics
 
-
-## Refresh Token Characteristics
-
-----------------------------------------
-| Property | Description               |
-|----------|---------------------------|
-| Lifetime | Longer duration           |
-| Usage | Generate new access tokens   |
-| Storage | Secure storage             |
+| Property | Description |
+|----------|-------------|
+| Lifetime | Longer duration |
+| Usage | Generate new access tokens |
+| Storage | Secure storage |
 | Rotation | Can be replaced after use |
-----------------------------------------
 
-
+---
 
 # 4. JWT Token Structure
 
 A JWT consists of three parts:
 
-```
-
+```text
 Header.Payload.Signature
-
 ```
 
 Example:
 
-```
-
+```text
 xxxxx.yyyyy.zzzzz
-
 ```
 
 ---
 
-# 4.1 JWT Header
+## 4.1 JWT Header
 
 Defines the signing algorithm.
 
@@ -156,14 +139,14 @@ Example:
 
 ```json
 {
- "alg": "RS256",
- "typ": "JWT"
+  "alg": "RS256",
+  "typ": "JWT"
 }
 ```
 
 ---
 
-# 4.2 JWT Payload
+## 4.2 JWT Payload
 
 Contains user identity and authorization information.
 
@@ -171,118 +154,113 @@ Example:
 
 ```json
 {
- "userId": "USR1001",
- "email": "user@example.com",
- "role": "PROSUMER",
- "permissions": [
+  "userId": "USR1001",
+  "email": "user@example.com",
+  "role": "PROSUMER",
+  "permissions": [
     "SELL_ENERGY",
     "BUY_ENERGY",
     "VIEW_WALLET"
- ],
- "iat": 1700000000,
- "exp": 1700003600
+  ],
+  "iat": 1700000000,
+  "exp": 1700003600
 }
 ```
 
----
+### JWT Claims
 
-## JWT Claims
-
----------------------------------------
-
-| Field       | Description            |
-|-------------|------------------------|
-| userId      | Unique user identifier |
-| email       | User email             |
-| role        | User category          |
-| permissions | Allowed operations     |
-| iat         | Token creation time    |
-| exp         | Token expiration time  |
-
-----------------------------------------
+| Field | Description |
+|-------|-------------|
+| userId | Unique user identifier |
+| email | User email |
+| role | User category |
+| permissions | Allowed operations |
+| iat | Token creation time |
+| exp | Token expiration time |
 
 ---
 
-# 4.3 JWT Signature
+## 4.3 JWT Signature
 
 The signature ensures that the token was created by the trusted authentication service and has not been modified.
 
 Process:
 
+```text
 JWT Payload + Secret Key / Private Key = Digital Signature
 
 During validation:
 
-```
            Verify Signature
-JWT Token  ---------------->Accept / Reject Request 
+JWT Token --------------------> Accept / Reject Request
+```
 
-
-
-
+---
 
 # 5. Protected Platform Operations
 
 JWT authentication is required for:
 
------------------------------------------
-| Feature             | JWT Required    |
-|---------------------|-----------------|
-| User Profile        | Yes             |
-| Energy Dashboard    | Yes             |
-| Energy Marketplace  | Yes             |
-| Buy Energy          | Yes             |
-| Sell Energy         | Yes             |
-| Wallet Management   | Yes             |
-| Transaction History | Yes             |
-| Notifications       | Yes             |
------------------------------------------
+| Feature | JWT Required |
+|---------|--------------|
+| User Profile | Yes |
+| Energy Dashboard | Yes |
+| Energy Marketplace | Yes |
+| Buy Energy | Yes |
+| Sell Energy | Yes |
+| Wallet Management | Yes |
+| Transaction History | Yes |
+| Notifications | Yes |
 
-
-
+---
 
 # 6. Token Refresh Flow
 
 When an access token expires:
 
-
+```text
      Request Marketplace                Access Token Expired
-User --------------------> API Gateway -------------------->  Send Refresh Token 
-                                                                            |
-                                                                            |
-                                                                            |
-                                                                            v  
-                                                          Validate Refresh Token                       
- continue Trading Session <----- Generate New Access Token<-----------   Authentication Service
+User --------------------> API Gateway --------------------> Send Refresh Token
+                                                                   |
+                                                                   |
+                                                                   v
+                                                    Validate Refresh Token
+                                                                   |
+                                                                   v
+Authentication Service -------------> Generate New Access Token
+                                           |
+                                           v
+                               Continue Trading Session
+```
 
-
+---
 
 # 7. Token Validation Process
 
 Every protected request follows:
 
-
-     JWT Token               
-User --------------------> API Gateway -------------------->  Extract Token 
-                                                                            |
-                                                                            |
-                                                                            |
-                                                                            v  
-                                                                                 
-Allow / Reject Request <----- Check Expiry<--------------------   Verify Signature
-
-
-
+```text
+     JWT Token
+User --------------------> API Gateway --------------------> Extract Token
+                                                                   |
+                                                                   |
+                                                                   v
+                                                          Verify Signature
+                                                                   |
+                                                                   v
+                                                             Check Expiry
+                                                                   |
+                                                                   v
+                                                        Allow / Reject Request
+```
 
 Validation includes:
 
------------------------------------------
-| Check     | Purpose                   |
-|-----------|---------------------------|
+| Check | Purpose |
+|-------|----------|
 | Signature | Verify token authenticity |
-| Expiry    | Check token validity      |
-| User ID   | Identify user             |
------------------------------------------
+| Expiry | Check token validity |
+| User ID | Identify user |
 
 ---
 
@@ -292,17 +270,17 @@ Logout terminates the user session.
 
 Flow:
 
-
-
-     Logout Request                                 Revoke Refresh Token
-User --------------------> Authentication Service -------------------->   Remove Session
+```text
+     Logout Request
+User --------------------> Authentication Service --------------------> Revoke Refresh Token
                                                                             |
                                                                             |
+                                                                            v
+                                                                     Remove Session
                                                                             |
-                                                                            v  
-                                                                    User Logged Out
-
-
+                                                                            v
+                                                                     User Logged Out
+```
 
 ## Logout Actions
 
@@ -319,15 +297,11 @@ The system should:
 
 ## Token Rotation
 
-After refresh token usage:
-
-Old Refresh Token --------------> New Refresh Token
-
-      
+```text
+Old Refresh Token --------------------> New Refresh Token
+```
 
 The old refresh token becomes invalid.
-
-
 
 ## Token Revocation
 
@@ -343,18 +317,16 @@ Tokens can be revoked when:
 
 # 10. Failed Authentication Scenarios
 
-----------------------------------------------------
-| Scenario                    | System Response    |
-|-----------------------------|--------------------|
-| Incorrect password          | Reject login       |
-| Expired access token        | Request refresh    |
-| Invalid JWT signature       | Block request      |
-| Expired refresh token       | Require login      |
-| Disabled account            | Deny access        |
+| Scenario | System Response |
+|----------|-----------------|
+| Incorrect password | Reject login |
+| Expired access token | Request refresh |
+| Invalid JWT signature | Block request |
+| Expired refresh token | Require login |
+| Disabled account | Deny access |
 | Unauthorized trading action | Reject transaction |
-----------------------------------------------------
 
-
+---
 
 # 11. Conclusion
 
