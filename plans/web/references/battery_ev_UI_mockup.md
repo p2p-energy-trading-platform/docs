@@ -1,5 +1,6 @@
-# Energy Assets Dashboard
-
+---
+connie-title: Energy assests dashboard
+---
 ## Overview
 
 The **Energy Assets** page provides a centralized view of all energy-related devices connected to a prosumer's home.

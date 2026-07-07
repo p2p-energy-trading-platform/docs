@@ -1,5 +1,6 @@
-# JWT Token Management Plan for P2P Energy Trading Platform
-
+---
+connie-title: JWT Token Management Plan for P2P Energy Trading Platform
+---
 ## 1. Introduction
 
 This document defines the JWT (JSON Web Token) management strategy used by the P2P Energy Trading Platform.
