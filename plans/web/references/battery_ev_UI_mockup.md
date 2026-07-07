@@ -174,5 +174,3 @@ The simulator can later expose:
 - Departure Time
 - Plug Status
 - Battery Health
-
----
