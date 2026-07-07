@@ -8,10 +8,10 @@ Unlike a traditional smart meter dashboard that only displays electricity consum
 
 These include:
 
--  Battery Storage
--  Electric Vehicle (EV)
--  Solar Inverter
--  Smart Meter
+- Battery Storage
+- Electric Vehicle (EV)
+- Solar Inverter
+- Smart Meter
 
 The page updates in real time using MQTT telemetry published by the IoT simulator.
 

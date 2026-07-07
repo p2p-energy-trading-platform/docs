@@ -17,7 +17,6 @@ The JWT authentication system protects platform operations such as:
 - Transaction history
 - Notification services
 
-
 The authentication system uses two types of tokens:
 
 1. Access Token
@@ -71,7 +70,9 @@ An access token is a short-lived token used to authenticate API requests.
 The access token is attached to API requests:
 
 ```
+
 Authorization: Bearer <access_token>
+
 ```
 
 
@@ -92,9 +93,11 @@ Authorization: Bearer <access_token>
 Example lifetime:
 
 ```
+
 Access Token Expiry:
 
 15 minutes
+
 ```
 
 ---
@@ -129,13 +132,17 @@ A refresh token is a long-lived token used to generate a new access token after 
 A JWT consists of three parts:
 
 ```
+
 Header.Payload.Signature
+
 ```
 
 Example:
 
 ```
+
 xxxxx.yyyyy.zzzzz
+
 ```
 
 ---
@@ -181,6 +188,7 @@ Example:
 ## JWT Claims
 
 ---------------------------------------
+
 | Field       | Description            |
 |-------------|------------------------|
 | userId      | Unique user identifier |
@@ -189,6 +197,7 @@ Example:
 | permissions | Allowed operations     |
 | iat         | Token creation time    |
 | exp         | Token expiration time  |
+
 ----------------------------------------
 
 ---
@@ -199,9 +208,7 @@ The signature ensures that the token was created by the trusted authentication s
 
 Process:
 
-
 JWT Payload + Secret Key / Private Key = Digital Signature
-
 
 During validation:
 
