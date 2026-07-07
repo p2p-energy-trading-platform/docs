@@ -327,7 +327,6 @@ Tokens can be revoked when:
 | Unauthorized trading action | Reject transaction |
 
 ---
-
 # 11. Conclusion
 
 JWT token management provides secure authentication and authorization for the P2P Energy Trading Platform.
