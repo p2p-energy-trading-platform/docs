@@ -17,7 +17,7 @@ connie-title: MQTT to Kafka Pipeline
 1. [Overview](#1-overview)
 2. [System Components & Port Architecture](#2-system-components--port-architecture)
 3. [Connector Configuration](#3-connector-configuration)
-4. [Operational Loop Execution](#4-operational-loop-execution)
+4. [Operational Loop Verification](#4-operational-loop-verification)
 5. [Payload Serialization & Decoding](#5-payload-serialization--decoding)
 
 ---
@@ -26,7 +26,7 @@ connie-title: MQTT to Kafka Pipeline
 
 The MQTT-to-Kafka pipeline consists of three layers:
 
-```
+```text
 Edge Device / IoT Simulator
         │
         ▼ MQTT Publish
@@ -137,9 +137,7 @@ docker ps
 Submit the `mqtt-connector.json` file to the Kafka Connect REST interface using `curl`:
 
 ```bash
-curl -X POST -H "Content-Type: application/json" \
-  --data @mqtt-connector.json \
-  http://localhost:8083/connectors
+curl -X POST -H "Content-Type: application/json"   --data @mqtt-connector.json   http://localhost:8083/connectors
 ```
 
 To verify that the connector was registered successfully and is actively running, query its status endpoint:
@@ -178,9 +176,7 @@ Follow these steps to generate telemetry streams and verify data transit across 
 Publish a JSON mock payload directly into the Mosquitto container targeting the dynamic routing path:
 
 ```bash
-sudo docker exec -it gridx-mqtt mosquitto_pub \
-  -t "gridx/devices/device001/telemetry" \
-  -m '{"voltage": 230, "current": 5}'
+sudo docker exec -it gridx-mqtt mosquitto_pub   -t "gridx/devices/device001/telemetry"   -m '{"voltage": 230, "current": 5}'
 ```
 
 This simulates an IoT edge device publishing a telemetry reading to the MQTT broker on the topic `gridx/devices/device001/telemetry`.
@@ -197,7 +193,7 @@ sudo docker logs gridx-kafka-connect --tail 50
 
 When operating correctly, the logs will show offset commit confirmations:
 
-```
+```text
 INFO WorkerSourceTask{id=mqtt-dynamic-source-0} Committing offsets for 1 acknowledged messages
 ```
 
@@ -208,10 +204,7 @@ INFO WorkerSourceTask{id=mqtt-dynamic-source-0} Committing offsets for 1 acknowl
 Open a **new terminal tab or separate split window** (leaving your existing sessions open), then start a live console consumer session to read from the target Kafka topic from the beginning offset:
 
 ```bash
-sudo docker exec -it gridx-kafka kafka-console-consumer \
-  --bootstrap-server localhost:9092 \
-  --topic gridx_telemetry__TOPIC \
-  --from-beginning
+sudo docker exec -it gridx-kafka kafka-console-consumer   --bootstrap-server localhost:9092   --topic gridx_telemetry__TOPIC   --from-beginning
 ```
 
 > **Note:** This command blocks the terminal and listens continuously for incoming messages. Keep it running in its own window while you execute the `mosquitto_pub` command in a separate session. Successfully ingested messages will appear here confirming end-to-end flow from MQTT through to Kafka.
@@ -224,7 +217,7 @@ sudo docker exec -it gridx-kafka kafka-console-consumer \
 
 The connector uses `org.apache.kafka.connect.json.JsonConverter` with `schemas.enable: false`. Kafka Connect wraps the raw JSON string inside an internal binary payload structure before committing it to the topic. In a standard console consumer session this appears as a base64-encoded string:
 
-```
+```text
 "eyJ2b2x0YWdlIjogMjMwLCAiY3VycmVudCI6IDV9"
 ```
 
@@ -246,7 +239,7 @@ echo "eyJ2b2x0YWdlIjogMjMwLCAiY3VycmVudCI6IDV9" | base64 --decode
 
 Downstream database sinks (such as TimescaleDB) using the matching `JsonConverter` class will automatically decode these records back into native row schemas upon ingestion — no manual decoding is required in production.
 
-```
+```text
 Kafka Topic (gridx_telemetry__TOPIC)
         │
         ▼ JsonConverter decodes automatically
