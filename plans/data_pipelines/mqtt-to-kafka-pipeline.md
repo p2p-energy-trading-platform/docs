@@ -4,9 +4,9 @@ connie-title: MQTT to Kafka Pipeline
 
 # MQTT-to-Kafka Connect Pipeline
 
-**Repository:** `gridx-infra`
-**Status:** Verified
-**Component:** IoT Data Ingestion Layer
+* **Repository:** `gridx-infra`
+* **Status:** Verified
+* **Component:** IoT Data Ingestion Layer
 
 > This document details the configuration, implementation, and verification steps for the MQTT-to-Kafka integration pipeline. The system bridges edge device telemetry from the Mosquitto MQTT broker into the Kafka commit log using Kafka Connect running the Lenses MQTT Source Plugin.
 
