@@ -10,9 +10,6 @@ This document records ideas that may help reduce latency in the matching engine.
 
 These are research notes and not final implementation decisions.
 
-
-
-
 ## Potential Optimisations
 
 ### 1. Direct Communication Between Order Service and Matching Engine

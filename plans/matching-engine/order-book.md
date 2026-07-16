@@ -213,7 +213,7 @@ effective_bid = buyer_limit_price - grid_fee
 
 The SELL order can match if:
 
-```
+```text
 seller_limit_price <= effective_bid
 ```
 

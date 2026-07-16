@@ -233,4 +233,3 @@ Stores the result after processing one incoming order.
 
 * Return matching results
 * Pass completed results to the next processing stage
-

@@ -10,7 +10,6 @@ connie-title: GridX — Market Benchmarking & Competitive Analysis Report
 
 ### Powerledger (Global Ledger Model)
 
-
 An enterprise-grade, Australian-based pioneer utilizing a hybrid public/private blockchain architecture (built on Solana and its own energy chain) to track and settle energy trading. It focuses heavily on tokenized utility models ($POWR$) to facilitate transactions across fragmented grids.
 
 Wholesale-to-retail grid tracking, using deep distributed ledger technology (DLT) validation. The dual-token layer adds economic friction and transaction cost overhead (gas/network fees). Additionally, blockchain consensus mechanisms introduce transactional latency, making high-frequency, millisecond matching impossible.
@@ -23,13 +22,11 @@ Private consensus networks mapped to physical utility poles and localized distri
 
 ### LichtBlick SchwarmEnergie (Virtual Power Plant / Swarm Model)
 
-
 A pioneering German platform designed around the concept of a **Virtual Power Plant (VPP)**. Instead of focusing on peer-to-peer neighborhood sales, SchwarmEnergie aggregates thousands of distributed residential batteries, electric vehicles, and heat pumps into a singular, coordinated digital "swarm" that acts as a single, massive power plant.
 
 Centralized cloud-based telemetry routing, asset aggregation, automated load shifting, and direct wholesale energy market bidding. The platform monitors the state of charge (SoC) of connected home assets in real time. When the national grid faces sudden shortages, the centralized platform automatically triggers thousands of home batteries to inject power into the grid, selling that energy at peak wholesale prices.
 
 ### Vandebron (Direct Consumer Sourcing Model)
-
 
 A Dutch energy company operating a digital marketplace that allows consumers to buy electricity directly from independent, local renewable producers (such as specific wind farms, bio-generators, or regional solar cooperatives).
 

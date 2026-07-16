@@ -157,7 +157,7 @@ A grid is a zone - a small group of houses that trade locally with each other. I
 
 ### 4.2 How a grid is structured
 
-```
+```text
 Grid (e.g. "grid01")
  └── Houses (a mix of consumers, prosumers, and commercial generators)
       └── Every house has: 1 Smart Meter, 1 Load simulator
@@ -282,7 +282,7 @@ Refer to the `Dspatch Service` topic in the following [document]('../data_pipeli
 
 1. Meter Convergence: On the very next 5-second tick loop, the calculated net metrics (net_kw) naturally converge with the newly applied physical behavior, closing the loop.
 
-```
+```text
 net_kw = solar_kw - consumption_kw - sum(asset.power_kw for asset in storage_assets where power_kw < 0)
 + sum(asset.power_kw for asset in storage_assets where power_kw > 0)
 ```
@@ -321,7 +321,7 @@ The general idea: where it's cheap to do the real thing properly (weather-driven
 
 **Language:** TypeScript.
 
-```
+```text
 iot-simulator/
 ├── package.json
 ├── tsconfig.json

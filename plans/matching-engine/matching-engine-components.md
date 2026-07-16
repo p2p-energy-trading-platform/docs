@@ -338,5 +338,3 @@ Resume Kafka Consumer
 | Recovery Manager   | Restore Order Books after restart |
 
 ---
-
-

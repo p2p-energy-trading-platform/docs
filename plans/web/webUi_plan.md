@@ -5,6 +5,7 @@ connie-title: Web UI Plan
 # Web UI Plan – Peer-to-Peer Energy Trading Platform
 
 ## Project Overview
+
 This document describes the web interface design plan for the Peer-to-Peer Energy Trading Platform. The system enables prosumers (households and businesses) to buy, sell, and monitor energy in real-time using a trading-style dashboard.
 
 ---
@@ -35,6 +36,7 @@ The web application will use a sidebar-based layout:
 ## Pages Overview
 
 ### 1. Authentication Pages
+
 - Login Page
 - Signup Page
 
@@ -44,6 +46,7 @@ Secure access using JWT/OAuth authentication.
 ---
 
 ### 2. Profile Page
+
 - Manage user details (name, address, grid zone)
 - Manage energy assets (solar system, smart meter ID)
 - Verify installation and meter details
@@ -52,6 +55,7 @@ Secure access using JWT/OAuth authentication.
 ---
 
 ### 3. Energy Monitor Page
+
 - Real-time solar energy production dashboard
 - Consumption vs production comparison
 - Historical energy generation trends
@@ -61,6 +65,7 @@ Secure access using JWT/OAuth authentication.
 ---
 
 ### 4. Market / Trading Page (Core Module)
+
 - Live buy/sell order book (bids & asks)
 - Place buy bid orders (kWh + price)
 - Place sell orders (surplus energy)
@@ -73,6 +78,7 @@ Secure access using JWT/OAuth authentication.
 ---
 
 ### 5. Wallet Page
+
 - Energy credit balance (kWh / currency equivalent)
 - Transaction history (buy/sell logs)
 - Automatic balance updates after trades
@@ -80,6 +86,7 @@ Secure access using JWT/OAuth authentication.
 ---
 
 ### 6. Analytics Page
+
 - Historical price trends (OHLC charts)
 - AI-based energy price forecasting
 - Energy usage analytics
@@ -87,6 +94,7 @@ Secure access using JWT/OAuth authentication.
 ---
 
 ### 7. Notifications Panel
+
 - Trade execution alerts
 - Price spike alerts (sell opportunity)
 - Low price alerts (buy opportunity)
