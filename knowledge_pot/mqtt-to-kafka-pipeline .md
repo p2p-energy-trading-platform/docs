@@ -1,3 +1,7 @@
+---
+connie-title: MQTT to Kafka Pipeline
+---
+
 # MQTT-to-Kafka Connect Pipeline
 
 **Repository:** `gridx-infra`
