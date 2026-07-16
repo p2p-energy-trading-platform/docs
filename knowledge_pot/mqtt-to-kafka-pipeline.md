@@ -106,7 +106,7 @@ INSERT INTO gridx_telemetry__TOPIC SELECT * FROM gridx/devices/+/telemetry
 
 The `+` wildcard matches any single-level MQTT topic segment, meaning all device telemetry messages published to:
 
-```
+```plaintext
 gridx/devices/{deviceId}/telemetry
 ```
 
