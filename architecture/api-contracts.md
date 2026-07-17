@@ -27,7 +27,7 @@ connie-title: API Contracts
 
 ## 1. Architecture Overview
 
-```
+```text
 Client (Web / Mobile)
         │
         ▼
@@ -79,7 +79,7 @@ All REST endpoints (except `/auth/login` and `/auth/register`) require a valid J
 
 ### 2.2 Authorization Header
 
-```
+```text
 Authorization: Bearer <access_token>
 ```
 
@@ -113,7 +113,7 @@ Authorization: Bearer <access_token>
 
 ### 2.5 Signing Algorithm
 
-```
+```text
 Algorithm: RS256 (RSA Signature with SHA-256)
 Header: { "alg": "RS256", "typ": "JWT" }
 ```
@@ -943,12 +943,13 @@ service RecoveryService {
 
 ### 6.1 Topic Structure
 
-```
+```text
 gridx/{grid_id}/{house_id}/meter
 ```
 
 **Examples:**
-```
+
+```text
 gridx/grid-001/house-001/meter
 gridx/grid-001/house-002/meter
 gridx/grid-002/house-001/meter
@@ -1052,7 +1053,7 @@ The `protobuf` repository auto-generates SDKs for all services using **Buf**.
 
 | SDK | Repository | Language | Usage |
 |---|---|---|---|
-| `go-sdk` | `p2p-energy-trading-platform/go-sdk` | Go | Matching Engine, Order Service |
+| `go-sdk` | `p2p-energy-trading-platform/go-sdk` | Go | Order Service, Settlement Service |
 | `typescript-sdk` | `p2p-energy-trading-platform/typescript-sdk` | TypeScript | Web Dashboard, Mobile App |
 | `cpp-sdk` | `p2p-energy-trading-platform/cpp-sdk` | C++ | Matching Engine internals |
 
