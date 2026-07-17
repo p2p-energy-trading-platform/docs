@@ -1151,4 +1151,3 @@ rm -rf gen/
 | `FAILED_PRECONDITION` | Matching engine not ready (recovering) |
 | `UNAVAILABLE` | Service temporarily unavailable |
 | `INTERNAL` | Unexpected internal error |
-
