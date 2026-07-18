@@ -1,0 +1,108 @@
+{
+  "primitive": {
+    "typography": {
+      "font-family": {
+        "heading": {
+          "$type": "fontFamily",
+          "$value": "Plus Jakarta Sans"
+        },
+        "body": {
+          "$type": "fontFamily",
+          "$value": "Inter"
+        },
+        "mono": {
+          "$type": "fontFamily",
+          "$value": "Menlo"
+        }
+      },
+
+      "font-weight": {
+        "regular": {
+          "$type": "fontWeight",
+          "$value": 400
+        },
+        "medium": {
+          "$type": "fontWeight",
+          "$value": 500
+        },
+        "semibold": {
+          "$type": "fontWeight",
+          "$value": 600
+        },
+        "bold": {
+          "$type": "fontWeight",
+          "$value": 700
+        }
+      },
+
+      "font-size": {
+        "xs": {
+          "$type": "dimension",
+          "$value": "12px"
+        },
+        "sm": {
+          "$type": "dimension",
+          "$value": "14px"
+        },
+        "md": {
+          "$type": "dimension",
+          "$value": "16px"
+        },
+        "lg": {
+          "$type": "dimension",
+          "$value": "20px"
+        },
+        "xl": {
+          "$type": "dimension",
+          "$value": "28px"
+        },
+        "2xl": {
+          "$type": "dimension",
+          "$value": "32px"
+        }
+      },
+
+      "line-height": {
+        "xs": {
+          "$type": "dimension",
+          "$value": "16px"
+        },
+        "sm": {
+          "$type": "dimension",
+          "$value": "20px"
+        },
+        "md": {
+          "$type": "dimension",
+          "$value": "24px"
+        },
+        "lg": {
+          "$type": "dimension",
+          "$value": "28px"
+        },
+        "xl": {
+          "$type": "dimension",
+          "$value": "36px"
+        },
+        "2xl": {
+          "$type": "dimension",
+          "$value": "32px"
+        }
+      },
+
+      "letter-spacing": {
+        "none": {
+          "$type": "dimension",
+          "$value": "0px"
+        },
+        "wide": {
+          "$type": "dimension",
+          "$value": "0.3px"
+        },
+        "wider": {
+          "$type": "dimension",
+          "$value": "1.2px"
+        }
+      }
+    }
+  }
+}
