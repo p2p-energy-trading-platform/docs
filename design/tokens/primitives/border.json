@@ -1,0 +1,40 @@
+{
+  "primitive": {
+    "border": {
+      "width": {
+        "none": {
+          "$type": "dimension",
+          "$value": "0px"
+        },
+        "hairline": {
+          "$type": "dimension",
+          "$value": "0.5px"
+        },
+        "default": {
+          "$type": "dimension",
+          "$value": "1px"
+        },
+        "medium": {
+          "$type": "dimension",
+          "$value": "2px"
+        },
+        "thick": {
+          "$type": "dimension",
+          "$value": "4px"
+        }
+      },
+
+      "focus": {
+        "width": {
+          "$type": "dimension",
+          "$value": "2px"
+        },
+
+        "offset": {
+          "$type": "dimension",
+          "$value": "2px"
+        }
+      }
+    }
+  }
+}
