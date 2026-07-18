@@ -1,0 +1,69 @@
+{
+  "primitive": {
+    "elevation": {
+      "0": {
+        "$type": "shadow",
+        "$value": []
+      },
+
+      "1": {
+        "$type": "shadow",
+        "$value": [
+          {
+            "color": "rgba(13,27,54,0.06)",
+            "offsetX": "0px",
+            "offsetY": "1px",
+            "blur": "1.5px",
+            "spread": "0px"
+          },
+          {
+            "color": "rgba(13,27,54,0.04)",
+            "offsetX": "0px",
+            "offsetY": "1px",
+            "blur": "1px",
+            "spread": "0px"
+          }
+        ]
+      },
+
+      "2": {
+        "$type": "shadow",
+        "$value": [
+          {
+            "color": "rgba(13,27,54,0.08)",
+            "offsetX": "0px",
+            "offsetY": "2px",
+            "blur": "6px",
+            "spread": "0px"
+          }
+        ]
+      },
+
+      "3": {
+        "$type": "shadow",
+        "$value": [
+          {
+            "color": "rgba(13,27,54,0.12)",
+            "offsetX": "0px",
+            "offsetY": "8px",
+            "blur": "16px",
+            "spread": "-4px"
+          }
+        ]
+      },
+
+      "4": {
+        "$type": "shadow",
+        "$value": [
+          {
+            "color": "rgba(13,27,54,0.16)",
+            "offsetX": "0px",
+            "offsetY": "16px",
+            "blur": "32px",
+            "spread": "-8px"
+          }
+        ]
+      }
+    }
+  }
+}
