@@ -35,6 +35,7 @@ connie-title: Web - User Stories
 ## 1. Landing Page
 
 ### US-1.1 — Landing page hero section
+
 >**As** a visitor, <br>
 >**I want** to see a compelling hero section with a headline, key platform stats, and live market ticker, <br>
 >**so that** I immediately understand what GridX does and feel confident it is a live, active platform.
@@ -52,6 +53,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-1.2 — Features section
+
 >**As** a visitor, <br>
 >**I want** to see a grid of platform features with icons and descriptions, <br>
 >**so that** I understand what the platform offers before signing up.
@@ -67,6 +69,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-1.3 — How it works section
+
 >**As** a visitor, <br>
 >**I want** to see a simple 4-step onboarding flow explained visually, <br>
 >**so that** I understand how to get started on the platform.
@@ -82,6 +85,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-1.4 — Platform features grid
+
 >**As** a visitor, <br>
 >**I want** to see all 8 platform feature tiles (Live Marketplace, Order Book, Price Charts, Trade History, Meter Monitoring, Wallet Management, Smart Notifications, AI Price Forecasting), <br>
 >**so that** I can assess the full feature set before registering.
@@ -95,6 +99,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-1.5 — User persona section
+
 >**As** a visitor, <br>
 >**I want** to see three distinct participant personas (Generate & Sell, Buy Clean Local Energy, Advanced Trading Tools), <br>
 >**so that** I can identify which role applies to me.
@@ -110,6 +115,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-1.6 — FAQ section
+
 >**As** a visitor, <br>
 >**I want** to see answers to common questions about GridX, <br>
 >**so that** I can resolve doubts without contacting support.
@@ -125,6 +131,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-1.7 — Footer and final CTA
+
 >**As** a visitor, <br>
 >**I want** to see a final CTA banner and a footer with navigation links, <br>
 >**so that** I can sign up or find further information easily.
@@ -142,6 +149,7 @@ connie-title: Web - User Stories
 ## 2. Authentication — Sign In
 
 ### US-2.1 — Sign in form
+
 >**As** a registered user, <br>
 >**I want** to sign in with my email and password, <br>
 >**so that** I can access my GridX trading account.
@@ -165,6 +173,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-2.2 — Sign in page marketing panel
+
 >**As** a returning user, <br>
 >**I want** to see a motivational marketing panel on the sign in page, <br>
 >**so that** the brand and value proposition are reinforced during login.
@@ -180,6 +189,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-2.3 — Navigation to registration from sign in
+
 >**As** a new visitor on the sign in page, <br>
 >**I want** to be able to navigate to the Create Account page, <br>
 >**so that** I can register without going back to the landing page.
@@ -195,6 +205,7 @@ connie-title: Web - User Stories
 ## 3. Registration Flow
 
 ### US-3.1 — Create account (Step 1 of 3)
+
 >**As** a new user, <br>
 >**I want** to create a GridX account using my email and password, <br>
 >**so that** I can access the platform.
@@ -218,6 +229,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-3.2 — Verify email (between Step 1 and Step 2)
+
 >**As** a new user, <br>
 >**I want** to verify my email address using a 6-digit OTP code, <br>
 >**so that** GridX can confirm my email before proceeding.
@@ -241,6 +253,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-3.3 — KYC identity verification (Step 2 of 3)
+
 >**As** a new user, <br>
 >**I want** to optionally complete KYC identity verification, <br>
 >**so that** I can unlock higher trading limits and wallet payouts.
@@ -262,6 +275,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-3.4 — Connect smart meter (Step 3 of 3)
+
 >**As** a new user, <br>
 >**I want** to optionally connect my smart meter during registration, <br>
 >**so that** GridX can automatically track my energy production and consumption.
@@ -285,6 +299,7 @@ connie-title: Web - User Stories
 ## 4. Dashboard
 
 ### US-4.1 — Dashboard KPI summary cards
+
 >**As** a prosumer, <br>
 >**I want** to see my key energy and financial metrics at a glance on the dashboard, <br>
 >**so that** I can quickly assess my current trading position.
@@ -302,6 +317,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-4.2 — Asset Fleet panel
+
 >**As** a prosumer, <br>
 >**I want** to see the status of all my connected energy assets on the dashboard, <br>
 >**so that** I can monitor their current state without navigating to the Energy Assets page.
@@ -319,6 +335,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-4.3 — Active Dispatches panel
+
 >**As** a prosumer, <br>
 >**I want** to see active dispatch commands on the dashboard, <br>
 >**so that** I know what automated actions are currently running on my assets.
@@ -334,6 +351,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-4.4 — Generation vs Consumption chart
+
 >**As** a prosumer, <br>
 >**I want** to see a live line/area chart comparing solar generation and household load throughout the day, <br>
 >**so that** I can understand my energy flow patterns.
@@ -351,6 +369,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-4.5 — Trading Activity panel
+
 >**As** a prosumer, <br>
 >**I want** to see my today's trading activity and current market price on the dashboard, <br>
 >**so that** I can track my trading performance at a glance.
@@ -368,6 +387,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-4.6 — Recent Trades section
+
 >**As** a prosumer, <br>
 >**I want** to see my most recent trades on the dashboard, <br>
 >**so that** I can quickly review completed activity without navigating to Trade History.
@@ -385,6 +405,7 @@ connie-title: Web - User Stories
 ## 5. Energy Assets — Energy Generation
 
 ### US-5.1 — Energy Assets stat bar
+
 >**As** a prosumer, <br>
 >**I want** to see 4 real-time fleet-level metrics at the top of the Energy Assets page, <br>
 >**so that** I have an instant overview before drilling into tabs.
@@ -400,6 +421,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-5.2 — Energy Generation / Energy Devices tab toggle
+
 >**As** a prosumer, <br>
 >**I want** to switch between Energy Generation and Energy Devices views using a tab toggle, <br>
 >**so that** I can access both views from the same page without extra navigation.
@@ -415,6 +437,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-5.3 — Solar Generation Today line chart
+
 >**As** a prosumer, <br>
 >**I want** to see a line chart comparing solar generation and consumption throughout today, <br>
 >**so that** I can identify peak generation periods and consumption patterns.
@@ -432,6 +455,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-5.4 — Energy Generation bar chart with period toggle
+
 >**As** a prosumer, <br>
 >**I want** to view my energy generation history with Daily, Weekly, and Monthly views, <br>
 >**so that** I can track generation trends over different time periods.
@@ -449,6 +473,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-5.5 — Production vs Consumption donut chart
+
 >**As** a prosumer, <br>
 >**I want** to see a donut chart showing the ratio of production to consumption, <br>
 >**so that** I can instantly know my surplus or deficit percentage.
@@ -464,6 +489,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-5.6 — Active Alerts panel
+
 >**As** a prosumer, <br>
 >**I want** to see active energy alerts on the Energy Generation page, <br>
 >**so that** I am notified of significant events like high production or surplus availability.
@@ -479,6 +505,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-5.7 — Today's Summary panel
+
 >**As** a prosumer, <br>
 >**I want** to see a summary of today's energy generation figures in the right panel, <br>
 >**so that** I have a quick numeric reference alongside the charts.
@@ -494,6 +521,7 @@ connie-title: Web - User Stories
 ## 6. Energy Assets — Energy Devices
 
 ### US-6.1 — Device cards grid
+
 >**As** a prosumer, <br>
 >**I want** to see all my connected devices displayed as individual cards with real-time status, <br>
 >**so that** I can monitor each asset's current state.
@@ -519,6 +547,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-6.2 — Solar Generation Today chart (Devices tab)
+
 >**As** a prosumer, <br>
 >**I want** to see the Solar vs Consumption line chart on the Devices tab too, <br>
 >**so that** I have generation context while reviewing device status.
@@ -534,6 +563,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-6.3 — Battery & EV Status panel
+
 >**As** a prosumer, <br>
 >**I want** to see a detailed Battery & EV status panel on the Devices tab, <br>
 >**so that** I can monitor charging rate, temperature, and SOC for each flexible asset.
@@ -553,6 +583,7 @@ connie-title: Web - User Stories
 ## 7. Trading Terminal — Buy
 
 ### US-7.1 — Live price ticker bar
+
 >**As** a trader, <br>
 >**I want** to see the current energy price and 24-hour market statistics at the top of the Trading Terminal, <br>
 >**so that** I can assess market conditions before placing an order.
@@ -570,6 +601,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-7.2 — Candlestick price chart
+
 >**As** a trader, <br>
 >**I want** to see a candlestick chart of ENERGY/RM price history, <br>
 >**so that** I can analyse price trends before deciding when and at what price to trade.
@@ -591,6 +623,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-7.3 — Order Book
+
 >**As** a trader, <br>
 >**I want** to see the live Order Book showing current bids and asks, <br>
 >**so that** I can understand market depth before placing a limit order.
@@ -610,6 +643,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-7.4 — Buy order panel
+
 >**As** a consumer or prosumer, <br>
 >**I want** to place a buy order for energy at a specified price and quantity, <br>
 >**so that** I can purchase energy from other participants at the best available price.
@@ -635,6 +669,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-7.5 — Buy/Sell tab toggle on Trading Terminal
+
 >**As** a trader, <br>
 >**I want** to switch between Buy and Sell modes using a tab toggle, <br>
 >**so that** I can place either type of order from the same terminal without navigating away.
@@ -652,6 +687,7 @@ connie-title: Web - User Stories
 ## 8. Trading Terminal — Sell
 
 ### US-8.1 — Sell order panel
+
 >**As** a prosumer, <br>
 >**I want** to place a sell order for my surplus energy at a specified price and quantity, <br>
 >**so that** I can sell excess solar generation to other participants.
@@ -681,6 +717,7 @@ connie-title: Web - User Stories
 ## 9. Wallet & Transactions
 
 ### US-9.1 — Wallet summary bar
+
 >**As** a user, <br>
 >**I want** to see my total wallet balance and this month's financial summary at the top of the Wallet page, <br>
 >**so that** I can quickly assess my financial position.
@@ -700,6 +737,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-9.2 — Revenue Analytics chart
+
 >**As** a user, <br>
 >**I want** to see a line chart of my revenue and profit over time, <br>
 >**so that** I can track my financial performance trends.
@@ -715,6 +753,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-9.3 — Monthly Income Summary chart
+
 >**As** a user, <br>
 >**I want** to see a grouped bar chart showing monthly revenue vs profit, <br>
 >**so that** I can compare income and profit month by month.
@@ -732,6 +771,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-9.4 — Transaction History table
+
 >**As** a user, <br>
 >**I want** to see a paginated table of all my wallet transactions, <br>
 >**so that** I can review individual credits, debits, deposits, and withdrawals.
@@ -755,6 +795,7 @@ connie-title: Web - User Stories
 ## 10. Trade History
 
 ### US-10.1 — Trade History KPI cards
+
 >**As** a user, <br>
 >**I want** to see summary statistics at the top of the Trade History page, <br>
 >**so that** I can quickly understand my overall trading performance.
@@ -768,6 +809,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-10.2 — Trading Performance chart
+
 >**As** a user, <br>
 >**I want** to see a line chart of daily net profit/loss, <br>
 >**so that** I can visualise my trading performance over the past week.
@@ -783,6 +825,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-10.3 — Trade History table with filters
+
 >**As** a user, <br>
 >**I want** to search and filter my trade history by type, status, and date, <br>
 >**so that** I can find specific trades quickly.
@@ -808,6 +851,7 @@ connie-title: Web - User Stories
 ## 11. Notifications
 
 ### US-11.1 — Notification summary stat cards
+
 >**As** a user, <br>
 >**I want** to see a summary of my unread notifications categorised by type, <br>
 >**so that** I can quickly prioritise what needs my attention.
@@ -825,6 +869,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-11.2 — Notification Center feed
+
 >**As** a user, <br>
 >**I want** to browse all my notifications in a scrollable feed with category tabs, <br>
 >**so that** I can see all events relevant to my account in one place.
@@ -846,6 +891,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-11.3 — Notification Preferences panel
+
 >**As** a user, <br>
 >**I want** to control which types of notifications I receive, <br>
 >**so that** I only get alerts that are relevant to me.
@@ -863,6 +909,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-11.4 — Delivery Channels panel
+
 >**As** a user, <br>
 >**I want** to choose how high-priority notifications are delivered to me, <br>
 >**so that** I receive critical alerts through my preferred channels.
@@ -882,6 +929,7 @@ connie-title: Web - User Stories
 ## 12. Profile
 
 ### US-12.1 — Personal information form
+
 >**As** a user, <br>
 >**I want** to view and update my personal profile information, <br>
 >**so that** my account details are accurate.
@@ -901,6 +949,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-12.2 — Security panel
+
 >**As** a user, <br>
 >**I want** to update my account password from the Profile page, <br>
 >**so that** I can maintain account security.
@@ -918,6 +967,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-12.3 — Account Status panel
+
 >**As** a user, <br>
 >**I want** to see my current account status (Trading Mode, KYC, Smart Meter) on my Profile page, <br>
 >**so that** I know which features I have access to and what actions are pending.
@@ -933,6 +983,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-12.4 — Trading Preferences panel
+
 >**As** a user, <br>
 >**I want** to set my default trading preferences, <br>
 >**so that** the Trading Terminal pre-fills my preferred settings automatically.
@@ -950,6 +1001,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-12.5 — Integrations panel
+
 >**As** a user, <br>
 >**I want** to view and manage third-party integrations connected to my account, <br>
 >**so that** I can control which external services have access to my GridX data.
@@ -967,6 +1019,7 @@ connie-title: Web - User Stories
 ## 13. Global / Layout
 
 ### US-13.1 — Sidebar navigation
+
 >**As** a logged-in user, <br>
 >**I want** to navigate between pages using a persistent sidebar, <br>
 >**so that** I can access any section of the app from anywhere.
@@ -986,6 +1039,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-13.2 — Top navigation bar
+
 >**As** a logged-in user, <br>
 >**I want** to see a persistent top bar with page title, search, and notification bell, <br>
 >**so that** I can quickly search and access notifications from any page.
@@ -1003,6 +1057,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-13.3 — Dark mode support
+
 >**As** a user, <br>
 >**I want** the web dashboard to be available in dark mode, <br>
 >**so that** I can use the platform comfortably in low-light environments.
@@ -1018,6 +1073,7 @@ connie-title: Web - User Stories
 ---
 
 ### US-13.4 — Responsive layout
+
 >**As** a user on a smaller screen, <br>
 >**I want** the dashboard to remain usable on different screen sizes, <br>
 >**so that** I can access my trading information on various devices.
