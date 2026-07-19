@@ -755,7 +755,7 @@ connie-title: Web - User Stories
 ## 10. Trade History
 
 ### US-10.1 — Trade History KPI cards
->**As** a user, <br> 
+>**As** a user, <br>
 >**I want** to see summary statistics at the top of the Trade History page, <br>
 >**so that** I can quickly understand my overall trading performance.
 
