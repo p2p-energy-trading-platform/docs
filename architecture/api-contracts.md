@@ -480,7 +480,7 @@ Get the authenticated user's virtual wallet balance.
 {
   "userId": "USR1001",
   "balance": 125000,
-  "currency": "LKR",
+  "currency": "AED",
   "lastUpdatedAt": "2026-07-15T10:05:00Z"
 }
 ```
@@ -510,7 +510,7 @@ Get the wallet transaction history.
       "transactionId": "TXN-20260715-001",
       "type": "CREDIT",
       "amount": 1880,
-      "currency": "LKR",
+      "currency": "AED",
       "description": "Energy sale — TRD-20260715-001",
       "tradeId": "TRD-20260715-001",
       "createdAt": "2026-07-15T10:02:00Z"
