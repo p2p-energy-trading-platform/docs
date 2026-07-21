@@ -16,8 +16,8 @@ connie-title: API Contracts
 
 1. [Architecture Overview](#1-architecture-overview)
 2. [Authentication](#2-authentication)
-3. [REST API - Fastify API Gateway](#3-rest-api--fastify-api-gateway)
-4. [gRPC Contracts - Matching Engine](#4-grpc-contracts--matching-engine)
+3. [REST API - Fastify API Gateway](#3-rest-api---fastify-api-gateway)
+4. [gRPC Contracts - Matching Engine](#4-grpc-contracts---matching-engine)
 5. [Kafka Event Contracts](#5-kafka-event-contracts)
 6. [IoT MQTT Telemetry Contracts](#6-iot-mqtt-telemetry-contracts)
 7. [Protobuf SDK Generation](#7-protobuf-sdk-generation)

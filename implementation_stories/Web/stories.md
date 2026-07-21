@@ -17,18 +17,18 @@ connie-title: Web - User Stories
 ## Table of Contents
 
 1. [Landing Page](#1-landing-page)
-2. [Authentication - Sign In](#2-authentication--sign-in)
+2. [Authentication - Sign In](#2-authentication---sign-in)
 3. [Registration Flow](#3-registration-flow)
 4. [Dashboard](#4-dashboard)
-5. [Energy Assets - Energy Generation](#5-energy-assets--energy-generation)
-6. [Energy Assets - Energy Devices](#6-energy-assets--energy-devices)
-7. [Trading Terminal - Buy](#7-trading-terminal--buy)
-8. [Trading Terminal - Sell](#8-trading-terminal--sell)
-9. [Wallet & Transactions](#9-wallet--transactions)
+5. [Energy Assets - Energy Generation](#5-energy-assets---energy-generation)
+6. [Energy Assets - Energy Devices](#6-energy-assets---energy-devices)
+7. [Trading Terminal - Buy](#7-trading-terminal---buy)
+8. [Trading Terminal - Sell](#8-trading-terminal---sell)
+9. [Wallet & Transactions](#9-wallet---transactions)
 10. [Trade History](#10-trade-history)
 11. [Notifications](#11-notifications)
 12. [Profile](#12-profile)
-13. [Global / Layout](#13-global--layout)
+13. [Global / Layout](#13-global---layout)
 
 ---
 
