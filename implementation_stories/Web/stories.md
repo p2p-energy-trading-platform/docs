@@ -24,11 +24,11 @@ connie-title: Web - User Stories
 6. [Energy Assets - Energy Devices](#6-energy-assets---energy-devices)
 7. [Trading Terminal - Buy](#7-trading-terminal---buy)
 8. [Trading Terminal - Sell](#8-trading-terminal---sell)
-9. [Wallet & Transactions](#9-wallet---transactions)
+9. [Wallet & Transactions](#9-wallet--transactions)
 10. [Trade History](#10-trade-history)
 11. [Notifications](#11-notifications)
 12. [Profile](#12-profile)
-13. [Global / Layout](#13-global---layout)
+13. [Global / Layout](#13-global--layout)
 
 ---
 
