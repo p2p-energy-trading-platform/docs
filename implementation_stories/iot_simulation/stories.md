@@ -16,7 +16,7 @@ connie-title: IoT Simulation - User Stories
 ### US-1.1 - Define grids and houses via config
 >
 > **As** a system configurator, <br>
-> **I want** to define grids and houses via a `grids.yaml` config file, <br>
+> **I want** to define grid and houses via a `grids.yaml` config file, <br>
 > **so that** simulation scenarios can be set up without code changes.
 
 *Maps to: `config/grids.yaml`, `src/config/loadConfig.ts`*
