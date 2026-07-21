@@ -2,13 +2,13 @@
 connie-title: Web - User Stories
 ---
 
-# GridX Web Dashboard — User Stories
+# GridX Web Dashboard - User Stories
 
-**Epic:** Web Dashboard UI
-**Project:** PETPG
-**Framework:** Next.js
-**Roles:** Consumer, Prosumer
-**Status:** Draft
+* **Epic:** Web Dashboard UI
+* **Project:** PETPG
+* **Framework:** Next.js
+* **Roles:** Consumer, Prosumer
+* **Status:** Draft
 
 > User stories derived directly from Figma designs. Each story maps to a specific screen or component visible in the design. Stories are organized by page/feature area and grouped under epics matching the sidebar navigation.
 
@@ -17,13 +17,13 @@ connie-title: Web - User Stories
 ## Table of Contents
 
 1. [Landing Page](#1-landing-page)
-2. [Authentication — Sign In](#2-authentication--sign-in)
+2. [Authentication - Sign In](#2-authentication--sign-in)
 3. [Registration Flow](#3-registration-flow)
 4. [Dashboard](#4-dashboard)
-5. [Energy Assets — Energy Generation](#5-energy-assets--energy-generation)
-6. [Energy Assets — Energy Devices](#6-energy-assets--energy-devices)
-7. [Trading Terminal — Buy](#7-trading-terminal--buy)
-8. [Trading Terminal — Sell](#8-trading-terminal--sell)
+5. [Energy Assets - Energy Generation](#5-energy-assets--energy-generation)
+6. [Energy Assets - Energy Devices](#6-energy-assets--energy-devices)
+7. [Trading Terminal - Buy](#7-trading-terminal--buy)
+8. [Trading Terminal - Sell](#8-trading-terminal--sell)
 9. [Wallet & Transactions](#9-wallet--transactions)
 10. [Trade History](#10-trade-history)
 11. [Notifications](#11-notifications)
@@ -34,7 +34,7 @@ connie-title: Web - User Stories
 
 ## 1. Landing Page
 
-### US-1.1 — Landing page hero section
+### US-1.1 - Landing page hero section
 
 >**As** a visitor, <br>
 >**I want** to see a compelling hero section with a headline, key platform stats, and live market ticker, <br>
@@ -52,7 +52,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-1.2 — Features section
+### US-1.2 - Features section
 
 >**As** a visitor, <br>
 >**I want** to see a grid of platform features with icons and descriptions, <br>
@@ -68,7 +68,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-1.3 — How it works section
+### US-1.3 - How it works section
 
 >**As** a visitor, <br>
 >**I want** to see a simple 4-step onboarding flow explained visually, <br>
@@ -84,7 +84,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-1.4 — Platform features grid
+### US-1.4 - Platform features grid
 
 >**As** a visitor, <br>
 >**I want** to see all 8 platform feature tiles (Live Marketplace, Order Book, Price Charts, Trade History, Meter Monitoring, Wallet Management, Smart Notifications, AI Price Forecasting), <br>
@@ -98,7 +98,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-1.5 — User persona section
+### US-1.5 - User persona section
 
 >**As** a visitor, <br>
 >**I want** to see three distinct participant personas (Generate & Sell, Buy Clean Local Energy, Advanced Trading Tools), <br>
@@ -114,7 +114,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-1.6 — FAQ section
+### US-1.6 - FAQ section
 
 >**As** a visitor, <br>
 >**I want** to see answers to common questions about GridX, <br>
@@ -130,7 +130,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-1.7 — Footer and final CTA
+### US-1.7 - Footer and final CTA
 
 >**As** a visitor, <br>
 >**I want** to see a final CTA banner and a footer with navigation links, <br>
@@ -146,9 +146,9 @@ connie-title: Web - User Stories
 
 ---
 
-## 2. Authentication — Sign In
+## 2. Authentication - Sign In
 
-### US-2.1 — Sign in form
+### US-2.1 - Sign in form
 
 >**As** a registered user, <br>
 >**I want** to sign in with my email and password, <br>
@@ -172,7 +172,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-2.2 — Sign in page marketing panel
+### US-2.2 - Sign in page marketing panel
 
 >**As** a returning user, <br>
 >**I want** to see a motivational marketing panel on the sign in page, <br>
@@ -188,7 +188,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-2.3 — Navigation to registration from sign in
+### US-2.3 - Navigation to registration from sign in
 
 >**As** a new visitor on the sign in page, <br>
 >**I want** to be able to navigate to the Create Account page, <br>
@@ -204,7 +204,7 @@ connie-title: Web - User Stories
 
 ## 3. Registration Flow
 
-### US-3.1 — Create account (Step 1 of 3)
+### US-3.1 - Create account (Step 1 of 3)
 
 >**As** a new user, <br>
 >**I want** to create a GridX account using my email and password, <br>
@@ -228,7 +228,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-3.2 — Verify email (between Step 1 and Step 2)
+### US-3.2 - Verify email (between Step 1 and Step 2)
 
 >**As** a new user, <br>
 >**I want** to verify my email address using a 6-digit OTP code, <br>
@@ -252,7 +252,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-3.3 — KYC identity verification (Step 2 of 3)
+### US-3.3 - KYC identity verification (Step 2 of 3)
 
 >**As** a new user, <br>
 >**I want** to optionally complete KYC identity verification, <br>
@@ -274,7 +274,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-3.4 — Connect smart meter (Step 3 of 3)
+### US-3.4 - Connect smart meter (Step 3 of 3)
 
 >**As** a new user, <br>
 >**I want** to optionally connect my smart meter during registration, <br>
@@ -298,7 +298,7 @@ connie-title: Web - User Stories
 
 ## 4. Dashboard
 
-### US-4.1 — Dashboard KPI summary cards
+### US-4.1 - Dashboard KPI summary cards
 
 >**As** a prosumer, <br>
 >**I want** to see my key energy and financial metrics at a glance on the dashboard, <br>
@@ -316,7 +316,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-4.2 — Asset Fleet panel
+### US-4.2 - Asset Fleet panel
 
 >**As** a prosumer, <br>
 >**I want** to see the status of all my connected energy assets on the dashboard, <br>
@@ -334,7 +334,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-4.3 — Active Dispatches panel
+### US-4.3 - Active Dispatches panel
 
 >**As** a prosumer, <br>
 >**I want** to see active dispatch commands on the dashboard, <br>
@@ -350,7 +350,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-4.4 — Generation vs Consumption chart
+### US-4.4 - Generation vs Consumption chart
 
 >**As** a prosumer, <br>
 >**I want** to see a live line/area chart comparing solar generation and household load throughout the day, <br>
@@ -368,7 +368,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-4.5 — Trading Activity panel
+### US-4.5 - Trading Activity panel
 
 >**As** a prosumer, <br>
 >**I want** to see my today's trading activity and current market price on the dashboard, <br>
@@ -386,7 +386,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-4.6 — Recent Trades section
+### US-4.6 - Recent Trades section
 
 >**As** a prosumer, <br>
 >**I want** to see my most recent trades on the dashboard, <br>
@@ -402,9 +402,9 @@ connie-title: Web - User Stories
 
 ---
 
-## 5. Energy Assets — Energy Generation
+## 5. Energy Assets - Energy Generation
 
-### US-5.1 — Energy Assets stat bar
+### US-5.1 - Energy Assets stat bar
 
 >**As** a prosumer, <br>
 >**I want** to see 4 real-time fleet-level metrics at the top of the Energy Assets page, <br>
@@ -420,7 +420,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-5.2 — Energy Generation / Energy Devices tab toggle
+### US-5.2 - Energy Generation / Energy Devices tab toggle
 
 >**As** a prosumer, <br>
 >**I want** to switch between Energy Generation and Energy Devices views using a tab toggle, <br>
@@ -436,7 +436,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-5.3 — Solar Generation Today line chart
+### US-5.3 - Solar Generation Today line chart
 
 >**As** a prosumer, <br>
 >**I want** to see a line chart comparing solar generation and consumption throughout today, <br>
@@ -454,7 +454,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-5.4 — Energy Generation bar chart with period toggle
+### US-5.4 - Energy Generation bar chart with period toggle
 
 >**As** a prosumer, <br>
 >**I want** to view my energy generation history with Daily, Weekly, and Monthly views, <br>
@@ -472,7 +472,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-5.5 — Production vs Consumption donut chart
+### US-5.5 - Production vs Consumption donut chart
 
 >**As** a prosumer, <br>
 >**I want** to see a donut chart showing the ratio of production to consumption, <br>
@@ -488,7 +488,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-5.6 — Active Alerts panel
+### US-5.6 - Active Alerts panel
 
 >**As** a prosumer, <br>
 >**I want** to see active energy alerts on the Energy Generation page, <br>
@@ -498,13 +498,13 @@ connie-title: Web - User Stories
 
 - "ACTIVE ALERTS" section displays alert cards.
 
-- At least 2 alert types visible: "High production detected" (neutral) and "Surplus available for trading" (action — highlighted in green/red).
+- At least 2 alert types visible: "High production detected" (neutral) and "Surplus available for trading" (action - highlighted in green/red).
 
 - "Surplus available for trading" alert links to the Trading Terminal.
 
 ---
 
-### US-5.7 — Today's Summary panel
+### US-5.7 - Today's Summary panel
 
 >**As** a prosumer, <br>
 >**I want** to see a summary of today's energy generation figures in the right panel, <br>
@@ -518,9 +518,9 @@ connie-title: Web - User Stories
 
 ---
 
-## 6. Energy Assets — Energy Devices
+## 6. Energy Assets - Energy Devices
 
-### US-6.1 — Device cards grid
+### US-6.1 - Device cards grid
 
 >**As** a prosumer, <br>
 >**I want** to see all my connected devices displayed as individual cards with real-time status, <br>
@@ -546,7 +546,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-6.2 — Solar Generation Today chart (Devices tab)
+### US-6.2 - Solar Generation Today chart (Devices tab)
 
 >**As** a prosumer, <br>
 >**I want** to see the Solar vs Consumption line chart on the Devices tab too, <br>
@@ -562,7 +562,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-6.3 — Battery & EV Status panel
+### US-6.3 - Battery & EV Status panel
 
 >**As** a prosumer, <br>
 >**I want** to see a detailed Battery & EV status panel on the Devices tab, <br>
@@ -580,9 +580,9 @@ connie-title: Web - User Stories
 
 ---
 
-## 7. Trading Terminal — Buy
+## 7. Trading Terminal - Buy
 
-### US-7.1 — Live price ticker bar
+### US-7.1 - Live price ticker bar
 
 >**As** a trader, <br>
 >**I want** to see the current energy price and 24-hour market statistics at the top of the Trading Terminal, <br>
@@ -600,7 +600,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-7.2 — Candlestick price chart
+### US-7.2 - Candlestick price chart
 
 >**As** a trader, <br>
 >**I want** to see a candlestick chart of ENERGY/RM price history, <br>
@@ -610,7 +610,7 @@ connie-title: Web - User Stories
 
 - Candlestick chart rendered with green (up) and red (down) candles.
 
-- Timeframe selector with options: 1m, 5m, 15m, 1H, 4H, 1D — active selection visually highlighted.
+- Timeframe selector with options: 1m, 5m, 15m, 1H, 4H, 1D - active selection visually highlighted.
 
 - Chart label shows "ENERGY / RM" and chart type "Candlestick".
 
@@ -622,7 +622,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-7.3 — Order Book
+### US-7.3 - Order Book
 
 >**As** a trader, <br>
 >**I want** to see the live Order Book showing current bids and asks, <br>
@@ -642,7 +642,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-7.4 — Buy order panel
+### US-7.4 - Buy order panel
 
 >**As** a consumer or prosumer, <br>
 >**I want** to place a buy order for energy at a specified price and quantity, <br>
@@ -654,7 +654,7 @@ connie-title: Web - User Stories
 
 - Available Balance displayed (e.g. RM 2,847.50).
 
-- Order Type selector with two options: "Market Order" and "Limit Order" — Limit Order active by default.
+- Order Type selector with two options: "Market Order" and "Limit Order" - Limit Order active by default.
 
 - Amount (kWh) input field with 4 quick-select preset buttons: 10, 25, 50, 100 kWh.
 
@@ -662,13 +662,13 @@ connie-title: Web - User Stories
 
 - Order summary shows: Subtotal, Platform Fee (2%), Total Cost.
 
-- "Buy X kWh" CTA button — dynamically updates with the entered quantity.
+- "Buy X kWh" CTA button - dynamically updates with the entered quantity.
 
 - Button is disabled if amount or price fields are empty or invalid.
 
 ---
 
-### US-7.5 — Buy/Sell tab toggle on Trading Terminal
+### US-7.5 - Buy/Sell tab toggle on Trading Terminal
 
 >**As** a trader, <br>
 >**I want** to switch between Buy and Sell modes using a tab toggle, <br>
@@ -684,9 +684,9 @@ connie-title: Web - User Stories
 
 ---
 
-## 8. Trading Terminal — Sell
+## 8. Trading Terminal - Sell
 
-### US-8.1 — Sell order panel
+### US-8.1 - Sell order panel
 
 >**As** a prosumer, <br>
 >**I want** to place a sell order for my surplus energy at a specified price and quantity, <br>
@@ -696,9 +696,9 @@ connie-title: Web - User Stories
 
 - "Sell Energy" tab is active (highlighted red) when sell panel is shown.
 
-- "Available to Sell" shown in kWh (e.g. 122.7 kWh — sourced from net surplus).
+- "Available to Sell" shown in kWh (e.g. 122.7 kWh - sourced from net surplus).
 
-- Price Recommendation section shows three options: Conservative (fast fill), Recommended (best balance — highlighted), Premium (max revenue), each with a price in RM/kWh.
+- Price Recommendation section shows three options: Conservative (fast fill), Recommended (best balance - highlighted), Premium (max revenue), each with a price in RM/kWh.
 
 - Clicking a recommendation auto-fills the Limit Price field.
 
@@ -708,7 +708,7 @@ connie-title: Web - User Stories
 
 - Revenue breakdown shows: Gross Revenue, Platform Fee (2% deducted), Net Revenue.
 
-- "Sell X kWh" CTA button — dynamically updates with the entered quantity.
+- "Sell X kWh" CTA button - dynamically updates with the entered quantity.
 
 - Button is disabled if quantity exceeds available surplus or price is empty.
 
@@ -716,7 +716,7 @@ connie-title: Web - User Stories
 
 ## 9. Wallet & Transactions
 
-### US-9.1 — Wallet summary bar
+### US-9.1 - Wallet summary bar
 
 >**As** a user, <br>
 >**I want** to see my total wallet balance and this month's financial summary at the top of the Wallet page, <br>
@@ -736,7 +736,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-9.2 — Revenue Analytics chart
+### US-9.2 - Revenue Analytics chart
 
 >**As** a user, <br>
 >**I want** to see a line chart of my revenue and profit over time, <br>
@@ -752,7 +752,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-9.3 — Monthly Income Summary chart
+### US-9.3 - Monthly Income Summary chart
 
 >**As** a user, <br>
 >**I want** to see a grouped bar chart showing monthly revenue vs profit, <br>
@@ -770,7 +770,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-9.4 — Transaction History table
+### US-9.4 - Transaction History table
 
 >**As** a user, <br>
 >**I want** to see a paginated table of all my wallet transactions, <br>
@@ -794,7 +794,7 @@ connie-title: Web - User Stories
 
 ## 10. Trade History
 
-### US-10.1 — Trade History KPI cards
+### US-10.1 - Trade History KPI cards
 
 >**As** a user, <br>
 >**I want** to see summary statistics at the top of the Trade History page, <br>
@@ -802,13 +802,13 @@ connie-title: Web - User Stories
 
 **Acceptance Criteria:**
 
-- 4 KPI cards displayed: Total Trades (count), Total Bought (RM), Total Sold (RM), Net P&L (RM — can be negative).
+- 4 KPI cards displayed: Total Trades (count), Total Bought (RM), Total Sold (RM), Net P&L (RM - can be negative).
 
 - Negative Net P&L displayed in red; positive in green.
 
 ---
 
-### US-10.2 — Trading Performance chart
+### US-10.2 - Trading Performance chart
 
 >**As** a user, <br>
 >**I want** to see a line chart of daily net profit/loss, <br>
@@ -824,7 +824,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-10.3 — Trade History table with filters
+### US-10.3 - Trade History table with filters
 
 >**As** a user, <br>
 >**I want** to search and filter my trade history by type, status, and date, <br>
@@ -850,7 +850,7 @@ connie-title: Web - User Stories
 
 ## 11. Notifications
 
-### US-11.1 — Notification summary stat cards
+### US-11.1 - Notification summary stat cards
 
 >**As** a user, <br>
 >**I want** to see a summary of my unread notifications categorised by type, <br>
@@ -868,7 +868,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-11.2 — Notification Center feed
+### US-11.2 - Notification Center feed
 
 >**As** a user, <br>
 >**I want** to browse all my notifications in a scrollable feed with category tabs, <br>
@@ -890,7 +890,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-11.3 — Notification Preferences panel
+### US-11.3 - Notification Preferences panel
 
 >**As** a user, <br>
 >**I want** to control which types of notifications I receive, <br>
@@ -908,7 +908,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-11.4 — Delivery Channels panel
+### US-11.4 - Delivery Channels panel
 
 >**As** a user, <br>
 >**I want** to choose how high-priority notifications are delivered to me, <br>
@@ -928,7 +928,7 @@ connie-title: Web - User Stories
 
 ## 12. Profile
 
-### US-12.1 — Personal information form
+### US-12.1 - Personal information form
 
 >**As** a user, <br>
 >**I want** to view and update my personal profile information, <br>
@@ -948,7 +948,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-12.2 — Security panel
+### US-12.2 - Security panel
 
 >**As** a user, <br>
 >**I want** to update my account password from the Profile page, <br>
@@ -966,7 +966,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-12.3 — Account Status panel
+### US-12.3 - Account Status panel
 
 >**As** a user, <br>
 >**I want** to see my current account status (Trading Mode, KYC, Smart Meter) on my Profile page, <br>
@@ -982,7 +982,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-12.4 — Trading Preferences panel
+### US-12.4 - Trading Preferences panel
 
 >**As** a user, <br>
 >**I want** to set my default trading preferences, <br>
@@ -992,15 +992,15 @@ connie-title: Web - User Stories
 
 - Fields: Default Order Type (dropdown), Default Price Mode (dropdown), Monthly Energy Limit (kWh input), Max Trade Value (RM input).
 
-- Toggle: "Auto-recommend sell price" — suggests price based on live order book depth.
+- Toggle: "Auto-recommend sell price" - suggests price based on live order book depth.
 
-- Toggle: "Allow dispatch automation" — lets GridX optimise battery/EV usage within limits.
+- Toggle: "Allow dispatch automation" - lets GridX optimise battery/EV usage within limits.
 
 - Changes saved via the Trading Preferences form.
 
 ---
 
-### US-12.5 — Integrations panel
+### US-12.5 - Integrations panel
 
 >**As** a user, <br>
 >**I want** to view and manage third-party integrations connected to my account, <br>
@@ -1018,7 +1018,7 @@ connie-title: Web - User Stories
 
 ## 13. Global / Layout
 
-### US-13.1 — Sidebar navigation
+### US-13.1 - Sidebar navigation
 
 >**As** a logged-in user, <br>
 >**I want** to navigate between pages using a persistent sidebar, <br>
@@ -1028,7 +1028,7 @@ connie-title: Web - User Stories
 
 - Sidebar visible on all authenticated pages.
 
-- Navigation groups: (unlabelled — GridX logo/branding), TRADING (Energy Assets, Trading Terminal, Wallet, Trade History), PROFILE (Notifications, Profile, Settings).
+- Navigation groups: (unlabelled - GridX logo/branding), TRADING (Energy Assets, Trading Terminal, Wallet, Trade History), PROFILE (Notifications, Profile, Settings).
 
 - Active page is highlighted in the sidebar.
 
@@ -1038,7 +1038,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-13.2 — Top navigation bar
+### US-13.2 - Top navigation bar
 
 >**As** a logged-in user, <br>
 >**I want** to see a persistent top bar with page title, search, and notification bell, <br>
@@ -1056,7 +1056,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-13.3 — Dark mode support
+### US-13.3 - Dark mode support
 
 >**As** a user, <br>
 >**I want** the web dashboard to be available in dark mode, <br>
@@ -1072,7 +1072,7 @@ connie-title: Web - User Stories
 
 ---
 
-### US-13.4 — Responsive layout
+### US-13.4 - Responsive layout
 
 >**As** a user on a smaller screen, <br>
 >**I want** the dashboard to remain usable on different screen sizes, <br>

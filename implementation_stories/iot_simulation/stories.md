@@ -1,8 +1,8 @@
 ---
-connie-title: IoT Simulation — User Stories
+connie-title: IoT Simulation - User Stories
 ---
 
-# IoT Simulation — User Stories
+# IoT Simulation - User Stories
 
 * **Epic:** IoT Simulation
 * **Repository:** [p2p-energy-trading-platform/iot-simulation](https://github.com/p2p-energy-trading-platform/iot-simulation)
@@ -13,7 +13,7 @@ connie-title: IoT Simulation — User Stories
 
 ## 1. Grid & House Domain Modeling
 
-### US-1.1 — Define grids and houses via config
+### US-1.1 - Define grids and houses via config
 >
 > **As** a system configurator, <br>
 > **I want** to define grids and houses via a `grids.yaml` config file, <br>
@@ -30,7 +30,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-1.2 — Per-house solar generation simulation
+### US-1.2 - Per-house solar generation simulation
 >
 > **As** the simulation engine, <br>
 > **I want** each house to model its own solar generation based on weather and panel specs, <br>
@@ -46,7 +46,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-1.3 — Per-house load simulation
+### US-1.3 - Per-house load simulation
 >
 > **As** the simulation engine, <br>
 > **I want** each house to model its own energy consumption using load archetypes and scale factors, <br>
@@ -62,7 +62,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-1.4 — Flexible asset simulation (battery/EV)
+### US-1.4 - Flexible asset simulation (battery/EV)
 >
 > **As** the simulation engine, <br>
 > **I want** to simulate flexible assets like batteries and EVs per house, <br>
@@ -78,7 +78,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-1.5 — Combined smart meter reading
+### US-1.5 - Combined smart meter reading
 >
 > **As** the simulation engine, <br>
 > **I want** a SmartMeter component that combines solar, load, and flexible asset data into a single reading, <br>
@@ -94,7 +94,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-1.6 — House generation from config ratios
+### US-1.6 - House generation from config ratios
 >
 >**As** the simulation engine, <br>
 >**I want** actual house objects to be generated from the ratios and counts defined in the grid config, <br>
@@ -112,7 +112,7 @@ connie-title: IoT Simulation — User Stories
 
 ## 2. Weather Data Integration
 
-### US-2.1 — Fetch live weather data from Open-Meteo
+### US-2.1 - Fetch live weather data from Open-Meteo
 >
 > **As** the simulation engine, <br>
 > **I want** to fetch live weather data from Open-Meteo for each configured grid, <br>
@@ -129,7 +129,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-2.2 — Clear-sky fallback model
+### US-2.2 - Clear-sky fallback model
 >
 > **As** the simulation engine,<br>
 > **I want** to fall back to a clear-sky model when Open-Meteo is unavailable,<br>
@@ -145,7 +145,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-2.3 — Unified weather provider interface
+### US-2.3 - Unified weather provider interface
 >
 > **As** the simulation engine, <br>
 > **I want** a single weather provider interface that transparently switches between live and fallback data, <br>
@@ -163,7 +163,7 @@ connie-title: IoT Simulation — User Stories
 
 ## 3. Scheduling & Telemetry Publishing
 
-### US-3.1 — Tick loop scheduler
+### US-3.1 - Tick loop scheduler
 >
 > **As** the simulation engine, <br>
 > **I want** a tick loop that decides when each meter publishes its reading, <br>
@@ -179,7 +179,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-3.2 — MQTT topic structure & publishing
+### US-3.2 - MQTT topic structure & publishing
 >
 > **As** a backend/platform consumer, <br>
 > **I want** smart meter readings published to MQTT topics structured as `gridx/{grid_id}/{house_id}/meter`, <br>
@@ -195,7 +195,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-3.3 — MQTT reconnection handling
+### US-3.3 - MQTT reconnection handling
 >
 > **As** the simulation engine, <br>
 > **I want** the MQTT client to automatically reconnect on connection loss, <br>
@@ -211,7 +211,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-3.4 — Receive and apply MQTT actuation commands
+### US-3.4 - Receive and apply MQTT actuation commands
 >
 >**As** the simulation engine, <br>
 >**I want** to receive actuation commands over MQTT and apply them to the relevant house's flexible asset state, <br>
@@ -229,7 +229,7 @@ connie-title: IoT Simulation — User Stories
 
 ## 4. Simulator State & Reliability
 
-### US-4.1 — In-memory simulation state
+### US-4.1 - In-memory simulation state
 >
 > **As** the simulation engine, <br>
 > **I want** to maintain in-memory simulation state across ticks, <br>
@@ -245,7 +245,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-4.2 — Typed payload and config schemas
+### US-4.2 - Typed payload and config schemas
 >
 > **As** a developer, <br>
 > **I want** strongly typed payload and config schemas, <br>
@@ -263,7 +263,7 @@ connie-title: IoT Simulation — User Stories
 
 ## 5. Developer Experience & Quality
 
-### US-5.1 — Unit test coverage
+### US-5.1 - Unit test coverage
 >
 > **As** a developer, <br>
 > **I want** unit tests covering each domain and infrastructure component, <br>
@@ -277,7 +277,7 @@ connie-title: IoT Simulation — User Stories
 
 ---
 
-### US-5.2 — Load and zone isolation testing
+### US-5.2 - Load and zone isolation testing
 >
 >**As** a platform engineer, <br>
 >**I want** a load test script and a zone isolation test script for the IoT simulation layer, <br>

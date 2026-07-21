@@ -2,7 +2,7 @@
 connie-title: API Contracts
 ---
 
-# GridX — API Contracts Documentation
+# GridX - API Contracts Documentation
 
 * **Project:** P2P Energy Trading Platform (GridX)
 * **Version:** v1.0.0 (Draft)
@@ -16,8 +16,8 @@ connie-title: API Contracts
 
 1. [Architecture Overview](#1-architecture-overview)
 2. [Authentication](#2-authentication)
-3. [REST API — Fastify API Gateway](#3-rest-api--fastify-api-gateway)
-4. [gRPC Contracts — Matching Engine](#4-grpc-contracts--matching-engine)
+3. [REST API - Fastify API Gateway](#3-rest-api--fastify-api-gateway)
+4. [gRPC Contracts - Matching Engine](#4-grpc-contracts--matching-engine)
 5. [Kafka Event Contracts](#5-kafka-event-contracts)
 6. [IoT MQTT Telemetry Contracts](#6-iot-mqtt-telemetry-contracts)
 7. [Protobuf SDK Generation](#7-protobuf-sdk-generation)
@@ -128,7 +128,7 @@ Header: { "alg": "RS256", "typ": "JWT" }
 
 ---
 
-## 3. REST API — Fastify API Gateway
+## 3. REST API - Fastify API Gateway
 
 **Base URL:** `https://api.gridx.io/v1`
 **Content-Type:** `application/json`
@@ -511,7 +511,7 @@ Get the wallet transaction history.
       "type": "CREDIT",
       "amount": 1880,
       "currency": "AED",
-      "description": "Energy sale — TRD-20260715-001",
+      "description": "Energy sale - TRD-20260715-001",
       "tradeId": "TRD-20260715-001",
       "createdAt": "2026-07-15T10:02:00Z"
     }
@@ -622,7 +622,7 @@ Get the authenticated user's energy generation and consumption summary.
 
 ---
 
-## 4. gRPC Contracts — Matching Engine
+## 4. gRPC Contracts - Matching Engine
 
 **Service:** Matching Engine
 **Language:** C++20
@@ -798,7 +798,7 @@ message GetActiveOrdersResponse {
   repeated Order orders = 1;
 }
 
-// Recovery service — called by Matching Engine at startup
+// Recovery service - called by Matching Engine at startup
 service RecoveryService {
   rpc GetActiveOrders(GetActiveOrdersRequest) returns (GetActiveOrdersResponse);
 }
@@ -825,7 +825,7 @@ service RecoveryService {
 
 ---
 
-### 5.2 `gridx.orders.v1` — Order Placed Event
+### 5.2 `gridx.orders.v1` - Order Placed Event
 
 **Message:** `OrderPlacedEvent` (see section 4.1)
 
@@ -855,7 +855,7 @@ service RecoveryService {
 
 ---
 
-### 5.3 `gridx.orders.updates.v1` — Order Updated Event
+### 5.3 `gridx.orders.updates.v1` - Order Updated Event
 
 **Message:** `OrderUpdatedEvent` (see section 4.1)
 
@@ -874,7 +874,7 @@ service RecoveryService {
 
 ---
 
-### 5.4 `gridx.trades.v1` — Trade Executed Event
+### 5.4 `gridx.trades.v1` - Trade Executed Event
 
 **Message:** `TradeExecutedEvent` (see section 4.2)
 
@@ -906,7 +906,7 @@ service RecoveryService {
 
 ---
 
-### 5.5 `gridx.grid-transfer-rules.v1` — Grid Transfer Rule Event
+### 5.5 `gridx.grid-transfer-rules.v1` - Grid Transfer Rule Event
 
 **Topic type:** Compacted (`cleanup.policy=compact`)
 **Message:** `GridTransferRuleUpdatedEvent` (see section 4.3)
@@ -959,7 +959,7 @@ gridx/grid-002/house-001/meter
 |---|---|
 | `grid_id` | Unique identifier for the grid/neighbourhood |
 | `house_id` | Unique identifier for the house within the grid |
-| `meter` | Fixed suffix — indicates smart meter reading |
+| `meter` | Fixed suffix - indicates smart meter reading |
 
 ---
 
@@ -1057,7 +1057,7 @@ The `protobuf` repository auto-generates SDKs for all services using **Buf**.
 | `typescript-sdk` | `p2p-energy-trading-platform/typescript-sdk` | TypeScript | Web Dashboard, Mobile App |
 | `cpp-sdk` | `p2p-energy-trading-platform/cpp-sdk` | C++ | Matching Engine internals |
 
-### 7.2 `buf.gen.yaml` — Generation Config
+### 7.2 `buf.gen.yaml` - Generation Config
 
 ```yaml
 version: v2
