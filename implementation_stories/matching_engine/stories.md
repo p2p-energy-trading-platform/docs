@@ -1,8 +1,8 @@
 ---
-connie-title: Matching Engine — User Stories
+connie-title: Matching Engine - User Stories
 ---
 
-# Matching Engine — User Stories
+# Matching Engine - User Stories
 
 * **Epic:** Matching Engine
 * **Repository:** [p2p-energy-trading-platform/matching-engine](https://github.com/p2p-energy-trading-platform/matching-engine)
@@ -15,7 +15,7 @@ connie-title: Matching Engine — User Stories
 
 ## 1. Order Ingestion
 
-### US-1.1 — Order ingestion via Kafka
+### US-1.1 - Order ingestion via Kafka
 >
 >**As** the matching engine, <br>
 >**I want** to consume incoming order events from Kafka, <br>
@@ -34,7 +34,7 @@ connie-title: Matching Engine — User Stories
 
 ## 2. Order Validation
 
-### US-2.1 — Order validation before matching
+### US-2.1 - Order validation before matching
 >
 >**As** the matching engine, <br>
 >**I want** to validate each incoming order before it enters the matching process, <br>
@@ -53,7 +53,7 @@ connie-title: Matching Engine — User Stories
 
 ## 3. Market Book & Zone Order Book Management
 
-### US-3.1 — Market Book selection by delivery slot
+### US-3.1 - Market Book selection by delivery slot
 >
 >**As** the matching engine, <br>
 >**I want** to select the correct Market Book for each order based on its delivery slot and product type, <br>
@@ -70,7 +70,7 @@ connie-title: Matching Engine — User Stories
 
 ---
 
-### US-3.2 — Zone Order Book management
+### US-3.2 - Zone Order Book management
 >
 >**As** the matching engine, <br>
 >**I want** to maintain separate Zone Order Books inside each Market Book, <br>
@@ -89,7 +89,7 @@ connie-title: Matching Engine — User Stories
 
 ---
 
-### US-3.3 — Market Book update after matching
+### US-3.3 - Market Book update after matching
 >
 >**As** the matching engine, <br>
 >**I want** the Market Book to be updated after every matching operation, <br>
@@ -108,7 +108,7 @@ connie-title: Matching Engine — User Stories
 
 ## 4. Matching Algorithm
 
-### US-4.1 — Same-zone order matching
+### US-4.1 - Same-zone order matching
 >
 >**As** the matching engine, <br>
 >**I want** to match buy and sell orders within the same grid zone, <br>
@@ -127,7 +127,7 @@ connie-title: Matching Engine — User Stories
 
 ---
 
-### US-4.2 — Cross-zone matching with Grid Transfer Policy
+### US-4.2 - Cross-zone matching with Grid Transfer Policy
 >
 >**As** the matching engine, <br>
 >**I want** to support cross-zone order matching when the Grid Transfer Policy permits it, <br>
@@ -138,7 +138,7 @@ connie-title: Matching Engine — User Stories
 **Acceptance Criteria:**
 
 - Cross-zone matching is only attempted when GridTransferRule.allowed = true for the seller/buyer zone pair.
-- Grid fee is retrieved from the in-memory GridTransferCache — no external service call during matching.
+- Grid fee is retrieved from the in-memory GridTransferCache - no external service call during matching.
 - Effective price for BUY: effective_ask = seller_price + grid_fee.
 - Effective price for SELL: effective_bid = buyer_limit_price - grid_fee.
 - If no rule exists for a zone pair, transfer is treated as not allowed by default.
@@ -146,7 +146,7 @@ connie-title: Matching Engine — User Stories
 
 ---
 
-### US-4.3 — Effective-Price-Time Priority
+### US-4.3 - Effective-Price-Time Priority
 >
 >**As** the matching engine, <br>
 >**I want** to apply Effective-Price-Time Priority when selecting among multiple matching candidates, <br>
@@ -163,7 +163,7 @@ connie-title: Matching Engine — User Stories
 
 ---
 
-### US-4.4 — Partial fill and multiple trade generation
+### US-4.4 - Partial fill and multiple trade generation
 >
 >**As** the matching engine, <br>
 >**I want** to support partial order fills and generate multiple trades from a single incoming order, <br>
@@ -183,7 +183,7 @@ connie-title: Matching Engine — User Stories
 
 ## 5. Order Expiry
 
-### US-5.1 — Order expiry at delivery slot end
+### US-5.1 - Order expiry at delivery slot end
 >
 >**As** the matching engine, <br>
 >**I want** unmatched order quantities to expire automatically when their 30-minute delivery slot ends, <br>
@@ -202,7 +202,7 @@ connie-title: Matching Engine — User Stories
 
 ## 6. Event Publishing
 
-### US-6.1 — Trade and order event publishing via Kafka
+### US-6.1 - Trade and order event publishing via Kafka
 >
 >**As** a downstream service (Settlement, Market Data, Notification), <br>
 >**I want** completed trade events and order status updates published to Kafka after each matching cycle, <br>
@@ -221,7 +221,7 @@ connie-title: Matching Engine — User Stories
 
 ## 7. Grid Transfer Cache
 
-### US-7.1 — Grid Transfer Cache startup loading from Kafka compacted topic
+### US-7.1 - Grid Transfer Cache startup loading from Kafka compacted topic
 >
 >**As** the matching engine, <br>
 >**I want** to load all grid transfer rules from a Kafka compacted topic at startup, <br>
@@ -239,7 +239,7 @@ connie-title: Matching Engine — User Stories
 
 ---
 
-### US-7.2 — Grid Transfer Cache runtime updates
+### US-7.2 - Grid Transfer Cache runtime updates
 >
 >**As** the matching engine, <br>
 >**I want** the Grid Transfer Cache to update in memory when new grid fee rules are published to Kafka, <br>
@@ -251,7 +251,7 @@ connie-title: Matching Engine — User Stories
 
 - Engine continues consuming grid.transfer-rules.v1 after startup.
 - When a new rule event arrives for a zone pair, the in-memory cache is updated immediately.
-- Trades already executed are not changed — each trade event carries the gridRuleVersion used at execution time.
+- Trades already executed are not changed - each trade event carries the gridRuleVersion used at execution time.
 - New orders received after the update use the new grid fee.
 - Cache update does not interrupt or delay active order matching.
 
@@ -259,7 +259,7 @@ connie-title: Matching Engine — User Stories
 
 ## 8. Crash Recovery
 
-### US-8.1 — Order Book rebuild after crash or restart
+### US-8.1 - Order Book rebuild after crash or restart
 >
 >**As** the matching engine, <br>
 >**I want** to rebuild all active Order Books from the Order Service after an unexpected restart, <br>
@@ -272,7 +272,7 @@ connie-title: Matching Engine — User Stories
 - Recovery Manager requests all OPEN and PARTIALLY_FILLED orders from the Order Service on startup.
 - Orders with status FILLED, CANCELLED, REJECTED, EXPIRED are ignored during recovery.
 - Orders are grouped first by delivery_slot_start + product_type (Market Book), then by gridZone (Zone Order Book).
-- Partially filled orders are restored using remainingQuantity only — not original quantity.
+- Partially filled orders are restored using remainingQuantity only - not original quantity.
 - Orders whose deliverySlotEnd has already passed are rejected from the in-memory book and an EXPIRED status update is published.
 - Kafka Consumer starts only after all Market Books and Zone Order Books are fully rebuilt.
 - If the Order Service is unavailable, recovery retries continuously without starting the consumer.
@@ -280,7 +280,7 @@ connie-title: Matching Engine — User Stories
 
 ---
 
-### US-8.2 — Orders received during recovery are not lost
+### US-8.2 - Orders received during recovery are not lost
 >
 >**As** the matching engine, <br>
 >**I want** new orders that arrive while recovery is running to be safely buffered in Kafka, <br>
@@ -299,7 +299,7 @@ connie-title: Matching Engine — User Stories
 
 ## 9. Concurrency & Thread Safety
 
-### US-9.1 — Thread safety for Market Book access
+### US-9.1 - Thread safety for Market Book access
 >
 >**As** the matching engine, <br>
 >**I want** Market Books and Zone Order Books to be protected by locks during concurrent access, <br>
@@ -318,7 +318,7 @@ connie-title: Matching Engine — User Stories
 
 ## 10. Domain Objects
 
-### US-10.1 — Core domain object definitions
+### US-10.1 - Core domain object definitions
 >
 >**As** a developer, <br>
 >**I want** well-defined C++ domain objects for Order, Trade, MarketId, PriceLevel, GridTransferRule, and MatchingResult, <br>
@@ -339,7 +339,7 @@ connie-title: Matching Engine — User Stories
 
 ## 11. Build System & Developer Tooling
 
-### US-11.1 — CMake + Ninja + Conan build system setup
+### US-11.1 - CMake + Ninja + Conan build system setup
 >
 >**As** a developer, <br>
 >**I want** a fully configured CMake/Ninja/Conan build system, <br>
@@ -357,7 +357,7 @@ connie-title: Matching Engine — User Stories
 
 ---
 
-### US-11.2 — Code quality tooling (clang-format + clang-tidy)
+### US-11.2 - Code quality tooling (clang-format + clang-tidy)
 >
 >**As** a developer, <br>
 >**I want** automated formatting and static analysis enforced via clang-format and clang-tidy, <br>
@@ -376,7 +376,7 @@ connie-title: Matching Engine — User Stories
 
 ## 12. Testing
 
-### US-12.1 — Unit and integration test coverage
+### US-12.1 - Unit and integration test coverage
 >
 >**As** a developer, <br>
 >**I want** unit and integration tests covering all matching engine components, <br>
@@ -393,7 +393,7 @@ connie-title: Matching Engine — User Stories
 
 ---
 
-### US-12.2 — Performance and stress testing
+### US-12.2 - Performance and stress testing
 >
 >**As** a developer, <br>
 >**I want** benchmark and stress tests measuring matching engine performance under load, <br>
