@@ -368,7 +368,7 @@ connie-title: Matching Engine - User Stories
 **Acceptance Criteria:**
 
 - .clang-format configured with at minimum: BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 100.
-- .clang-tidy enables checks: bugprone-*, performance-*, modernize-*, readability-*, cppcoreguidelines-*.
+- .clang-tidy enables check: bugprone-*, performance-*, modernize-*, readability-*, cppcoreguidelines-*.
 - clang-format runs cleanly across all .cpp and .hpp files in the repo.
 - CI pipeline runs clang-tidy as part of the build step.
 
