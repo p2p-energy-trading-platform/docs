@@ -4,9 +4,9 @@ connie-title: API Contracts
 
 # GridX — API Contracts Documentation
 
-**Project:** P2P Energy Trading Platform (GridX)
-**Version:** v1.0.0 (Draft)
-**Status:** Draft — contracts based on planned architecture. Teams should update field names and routes as implementation progresses.
+* **Project:** P2P Energy Trading Platform (GridX)
+* **Version:** v1.0.0 (Draft)
+* **Status:** Draft - contracts based on planned architecture. Teams should update field names and routes as implementation progresses.
 
 > This document defines all API contracts for the GridX platform including REST HTTP endpoints (Fastify API Gateway), gRPC service definitions (Matching Engine), Kafka async event schemas, and IoT MQTT telemetry payloads.
 
