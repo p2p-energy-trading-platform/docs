@@ -5,10 +5,10 @@ connie-title: API Contracts
 # GridX - API Contracts Documentation
 
 * **Project:** P2P Energy Trading Platform (GridX)
-* **Version:** v1.0.0 (Draft)
+* **Version:** v1.1.0 (Draft)
 * **Status:** Draft - contracts based on planned architecture. Teams should update field names and routes as implementation progresses.
 
-> This document defines all API contracts for the GridX platform including REST HTTP endpoints (Fastify API Gateway), gRPC service definitions (Matching Engine), Kafka async event schemas, and IoT MQTT telemetry payloads.
+> This document defines all API contracts for the GridX platform including REST HTTP endpoints (Fastify API Gateway), gRPC service definitions (Matching Engine), Kafka async event schemas, IoT MQTT telemetry payloads, and the smart meter registration flow.
 
 ---
 
@@ -16,12 +16,15 @@ connie-title: API Contracts
 
 1. [Architecture Overview](#1-architecture-overview)
 2. [Authentication](#2-authentication)
-3. [REST API - Fastify API Gateway](#3-rest-api---fastify-api-gateway)
-4. [gRPC Contracts - Matching Engine](#4-grpc-contracts---matching-engine)
-5. [Kafka Event Contracts](#5-kafka-event-contracts)
-6. [IoT MQTT Telemetry Contracts](#6-iot-mqtt-telemetry-contracts)
-7. [Protobuf SDK Generation](#7-protobuf-sdk-generation)
-8. [Error Codes Reference](#8-error-codes-reference)
+3. [Registration Flow](#3-registration-flow)
+4. [REST API - Fastify API Gateway](#4-rest-api--fastify-api-gateway)
+5. [gRPC Contracts - Matching Engine](#5-grpc-contracts--matching-engine)
+6. [Kafka Event Contracts](#6-kafka-event-contracts)
+7. [IoT MQTT Telemetry Contracts](#7-iot-mqtt-telemetry-contracts)
+8. [IoT Dispatch Contracts](#8-iot-dispatch-contracts)
+9. [Data Storage Tiers](#9-data-storage-tiers)
+10. [Protobuf SDK Generation](#10-protobuf-sdk-generation)
+11. [Error Codes Reference](#11-error-codes-reference)
 
 ---
 
@@ -54,6 +57,7 @@ Auth Service                              Order Service
                               ▼                ▼                ▼
                     Settlement Service   Market Data      Notification
                                           Service           Service
+
 IoT Simulator
 (MQTT / TypeScript)
         │
@@ -61,14 +65,21 @@ IoT Simulator
 MQTT Broker (Mosquitto)          ← gridx/{grid_id}/{house_id}/meter
         │
         ▼
-Kafka Pipeline (Kafka + TimescaleDB + S3)
+Kafka Topic: smart-meter-raw
+        │
+        ▼
+IoT Ingest & Dispatch Service
+        │
+        ├── Hot Storage  → Redis (sub-millisecond)
+        ├── Warm Storage → PostgreSQL + TimescaleDB
+        └── Cold Storage → MinIO / S3 (Parquet / CSV)
 ```
 
 ---
 
 ## 2. Authentication
 
-All REST endpoints (except `/auth/login` and `/auth/register`) require a valid JWT Bearer token.
+All REST endpoints (except `/auth/login`, `/auth/register`, and `/health`) require a valid JWT Bearer token.
 
 ### 2.1 Token Types
 
@@ -128,14 +139,111 @@ Header: { "alg": "RS256", "typ": "JWT" }
 
 ---
 
-## 3. REST API - Fastify API Gateway
+## 3. Registration Flow
 
-**Base URL:** `https://api.gridx.io/v1`
-**Content-Type:** `application/json`
+User registration follows a 3-step onboarding flow. KYC and Smart Meter connection are optional and can be completed later.
+
+### 3.1 Registration Steps
+
+```text
+Step 1: Account Creation
+        │  Email + Password + Terms agreement
+        ▼
+Step 2: Email Verification
+        │  6-digit OTP sent to registered email (expires in 10 minutes)
+        ▼
+Step 3a: KYC (Optional)
+        │  Legal name, National ID/Passport, Country, Date of Birth, Document upload
+        ▼
+Step 3b: Smart Meter Connection (Optional)
+        │  User enters Smart Meter ID
+        │  System sends connection request to DEWA Mock Service
+        ▼
+Dashboard
+```
+
+### 3.2 Smart Meter Registration Flow
+
+When a user submits their Smart Meter ID, the following sequence occurs:
+
+```text
+User enters Smart Meter ID
+        │
+        ▼
+Web App sends link request to DEWA Mock Service
+        │
+        ▼
+User manually approves the link in DEWA Mock View
+        │
+        ▼
+DEWA Mock Service generates RSA Key Pair
+        │
+        ├── Private Key → saved to IoT Simulator (shared DB / config)
+        └── Public Key  → saved to DEWA Mock Registry DB
+        │
+        ▼
+DEWA Mock publishes METER_VERIFIED event to MQTT Broker
+        │
+        ▼
+MQTT-Kafka Bridge syncs event to Kafka
+        │
+        ▼
+IoT Ingestion Service consumes METER_VERIFIED event
+        │
+        ├── Saves Public Key to local DB
+        └── Caches Public Key in Redis
+```
+
+### 3.3 METER_VERIFIED Event Payload
+
+Published to MQTT then synced to Kafka when a smart meter is successfully registered.
+
+```json
+{
+  "event": "METER_VERIFIED",
+  "meterId": "MTR-7829-XY",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----",
+  "verifiedAt": "2026-07-21T09:00:00Z"
+}
+```
+
+### 3.4 Telemetry Signature Verification Flow
+
+After registration, the IoT Simulator signs all telemetry payloads:
+
+```text
+IoT Simulator packages telemetry metrics
+        │
+        ▼
+Signs payload using RSA Private Key
+        │
+        ▼
+Publishes signed bundle to MQTT topic
+        │
+        ▼
+IoT Ingestion Service consumes from Kafka
+        │
+        ▼
+Fetches Public Key from Redis cache (fallback: local DB)
+        │
+        ▼
+Executes crypto.verify() check
+        │
+        ├── Valid   → routes data to marketplace engines
+        └── Invalid → rejects payload, logs security event
+```
 
 ---
 
-### 3.1 Authentication Endpoints
+## 4. REST API - Fastify API Gateway
+
+**Base URL:** `https://api.gridx.io/v1`
+**Content-Type:** `application/json`
+**Repository:** [api-gateway](https://github.com/p2p-energy-trading-platform/api-gateway)
+
+---
+
+### 4.1 Authentication Endpoints
 
 #### POST `/auth/register`
 
@@ -173,6 +281,30 @@ Register a new user account.
   "role": "PROSUMER",
   "gridZone": "ZONE_A",
   "createdAt": "2026-07-15T10:00:00Z"
+}
+```
+
+---
+
+#### POST `/auth/verify-email`
+
+Verify email address using a 6-digit OTP.
+
+**Request Body:**
+
+```json
+{
+  "email": "amal@example.com",
+  "otp": "214681"
+}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "message": "Email verified successfully.",
+  "verified": true
 }
 ```
 
@@ -244,7 +376,7 @@ Revoke the current refresh token and terminate the session.
 
 ---
 
-### 3.2 User Profile Endpoints
+### 4.2 User Profile Endpoints
 
 #### GET `/users/me`
 
@@ -261,6 +393,8 @@ Get the authenticated user's profile.
   "email": "amal@example.com",
   "role": "PROSUMER",
   "gridZone": "ZONE_A",
+  "kycStatus": "NOT_SUBMITTED",
+  "smartMeterStatus": "PENDING",
   "createdAt": "2026-07-15T10:00:00Z"
 }
 ```
@@ -296,7 +430,133 @@ Update the authenticated user's profile.
 
 ---
 
-### 3.3 Order Endpoints
+#### PATCH `/users/me/password`
+
+Update the authenticated user's password.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Request Body:**
+
+```json
+{
+  "currentPassword": "OldPassword123!",
+  "newPassword": "NewPassword456!",
+  "confirmPassword": "NewPassword456!"
+}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "message": "Password updated successfully."
+}
+```
+
+---
+
+#### GET `/users/me/preferences`
+
+Get the authenticated user's trading preferences.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response `200 OK`:**
+
+```json
+{
+  "defaultOrderType": "LIMIT",
+  "defaultPriceMode": "RECOMMENDED",
+  "monthlyEnergyLimitKwh": 500,
+  "maxTradeValueAed": 1000,
+  "autoRecommendSellPrice": true,
+  "allowDispatchAutomation": false
+}
+```
+
+---
+
+#### PATCH `/users/me/preferences`
+
+Update the authenticated user's trading preferences.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Request Body:**
+
+```json
+{
+  "defaultOrderType": "LIMIT",
+  "autoRecommendSellPrice": true,
+  "allowDispatchAutomation": true
+}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "message": "Preferences updated successfully."
+}
+```
+
+---
+
+#### POST `/users/me/smart-meter`
+
+Submit a smart meter connection request.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Request Body:**
+
+```json
+{
+  "smartMeterId": "MTR-7829-XY"
+}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "smartMeterId": "MTR-7829-XY",
+  "status": "PENDING",
+  "message": "Connection request sent to utility provider for approval."
+}
+```
+
+---
+
+#### POST `/users/me/kyc`
+
+Submit KYC identity verification documents.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Request Body (multipart/form-data):**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `legalFullName` | string | Yes | Legal full name |
+| `nationalId` | string | Yes | National ID or Passport number |
+| `country` | string | Yes | Country of residence |
+| `dateOfBirth` | string (ISO 8601) | Yes | Date of birth |
+| `document` | file | Yes | PNG, JPG, or PDF up to 10 MB |
+
+**Response `200 OK`:**
+
+```json
+{
+  "kycStatus": "PENDING",
+  "message": "KYC submission received. Verification in progress."
+}
+```
+
+---
+
+### 4.3 Order Endpoints
 
 #### POST `/orders`
 
@@ -420,7 +680,7 @@ Cancel an open order.
 
 ---
 
-### 3.4 Trade Endpoints
+### 4.4 Trade Endpoints
 
 #### GET `/trades`
 
@@ -464,7 +724,17 @@ List all completed trades for the authenticated user.
 
 ---
 
-### 3.5 Wallet Endpoints
+#### GET `/trades/:tradeId`
+
+Get details of a specific trade.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response `200 OK`:** Same structure as a single trade object above.
+
+---
+
+### 4.5 Wallet Endpoints
 
 #### GET `/wallet`
 
@@ -524,7 +794,69 @@ Get the wallet transaction history.
 
 ---
 
-### 3.6 Market Data Endpoints
+#### POST `/wallet/deposit`
+
+Deposit funds into the wallet.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Request Body:**
+
+```json
+{
+  "amount": 50000,
+  "currency": "AED",
+  "paymentMethod": "BANK_TRANSFER"
+}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "transactionId": "TXN-20260715-002",
+  "type": "CREDIT",
+  "amount": 50000,
+  "currency": "AED",
+  "status": "COMPLETED",
+  "createdAt": "2026-07-15T10:10:00Z"
+}
+```
+
+---
+
+#### POST `/wallet/withdraw`
+
+Withdraw funds from the wallet.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Request Body:**
+
+```json
+{
+  "amount": 20000,
+  "currency": "AED",
+  "paymentMethod": "BANK_TRANSFER"
+}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "transactionId": "TXN-20260715-003",
+  "type": "DEBIT",
+  "amount": 20000,
+  "currency": "AED",
+  "status": "COMPLETED",
+  "createdAt": "2026-07-15T10:15:00Z"
+}
+```
+
+---
+
+### 4.6 Market Data Endpoints
 
 #### GET `/market/orderbook`
 
@@ -587,7 +919,253 @@ Get recent market price history.
 
 ---
 
-### 3.7 Dashboard / Energy Endpoints
+#### GET `/market/candles`
+
+Get candlestick chart data for the Trading Terminal.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `interval` | string | Yes | `1m`, `5m`, `15m`, `1H`, `4H`, `1D` |
+| `from` | string (ISO 8601) | No | Start of range |
+| `to` | string (ISO 8601) | No | End of range |
+
+**Response `200 OK`:**
+
+```json
+{
+  "interval": "1m",
+  "candles": [
+    {
+      "timestamp": "2026-07-15T10:00:00Z",
+      "open": 0.45,
+      "high": 0.48,
+      "low": 0.43,
+      "close": 0.47,
+      "volumeKwh": 120
+    }
+  ]
+}
+```
+
+---
+
+### 4.7 IoT Device & Dispatch Endpoints
+
+#### GET `/devices`
+
+List all connected IoT devices for the authenticated user.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response `200 OK`:**
+
+```json
+{
+  "devices": [
+    {
+      "deviceId": "BAT001",
+      "type": "BATTERY",
+      "name": "Battery #1",
+      "status": "ONLINE",
+      "stateOfChargePercent": 82,
+      "capacityKwh": 13.5
+    },
+    {
+      "deviceId": "EV001",
+      "type": "EV",
+      "name": "Tesla Model Y",
+      "status": "CONNECTED",
+      "stateOfChargePercent": 65,
+      "v2gAvailableKwh": 12
+    }
+  ],
+  "total": 2
+}
+```
+
+---
+
+#### GET `/devices/:deviceId`
+
+Get real-time status of a specific device.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response `200 OK`:** Same structure as a single device object above.
+
+---
+
+#### POST `/devices/dispatch`
+
+Send a dispatch command to an energy asset.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Request Body:**
+
+```json
+{
+  "assetId": "bat_001",
+  "assetType": "bess",
+  "command": "set_power_kw",
+  "targetKw": -3.0,
+  "durationSeconds": 3600
+}
+```
+
+**Request Fields:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `assetId` | string | Yes | Asset identifier |
+| `assetType` | string | Yes | `bess` (battery), `ev` |
+| `command` | string | Yes | `set_power_kw` |
+| `targetKw` | float | Yes | Target power in kW (negative = discharge) |
+| `durationSeconds` | int | Yes | Duration of the dispatch command |
+
+**Response `201 Created`:**
+
+```json
+{
+  "dispatchId": "dsp_20260715_0042_001",
+  "assetId": "bat_001",
+  "assetType": "bess",
+  "command": "set_power_kw",
+  "targetKw": -3.0,
+  "durationSeconds": 3600,
+  "issuedAt": "2026-07-15T14:00:00Z",
+  "expiresAt": "2026-07-15T15:00:00Z",
+  "status": "EXECUTING"
+}
+```
+
+---
+
+### 4.8 Notification Endpoints
+
+#### GET `/notifications`
+
+Get all notifications for the authenticated user.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `category` | string | `DISPATCH`, `TRADES`, `SYSTEM`, `ACCOUNT` |
+| `unread` | boolean | If `true`, return only unread notifications |
+| `limit` | int | Results per page (default: 20) |
+| `offset` | int | Pagination offset |
+
+**Response `200 OK`:**
+
+```json
+{
+  "notifications": [
+    {
+      "notificationId": "NTF-001",
+      "category": "TRADES",
+      "title": "Trade matched successfully",
+      "description": "Your buy order TRD-7821 matched for 25.5 kWh at RM 0.45/kWh.",
+      "read": false,
+      "createdAt": "2026-07-15T10:18:00Z"
+    }
+  ],
+  "unreadCount": 3,
+  "total": 10
+}
+```
+
+---
+
+#### PATCH `/notifications/read-all`
+
+Mark all notifications as read.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response `200 OK`:**
+
+```json
+{
+  "message": "All notifications marked as read."
+}
+```
+
+---
+
+#### PATCH `/notifications/:notificationId/read`
+
+Mark a single notification as read.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response `200 OK`:**
+
+```json
+{
+  "notificationId": "NTF-001",
+  "read": true
+}
+```
+
+---
+
+#### GET `/notifications/preferences`
+
+Get the user's notification preferences.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response `200 OK`:**
+
+```json
+{
+  "tradeConfirmations": true,
+  "dispatchStatus": false,
+  "walletChanges": true,
+  "marketingUpdates": false,
+  "deliveryChannels": {
+    "inApp": true,
+    "email": true,
+    "sms": false
+  }
+}
+```
+
+---
+
+#### PATCH `/notifications/preferences`
+
+Update notification preferences.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Request Body:**
+
+```json
+{
+  "dispatchStatus": true,
+  "deliveryChannels": {
+    "email": false
+  }
+}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "message": "Notification preferences updated successfully."
+}
+```
+
+---
+
+### 4.9 Dashboard Endpoints
 
 #### GET `/dashboard/energy`
 
@@ -622,7 +1200,7 @@ Get the authenticated user's energy generation and consumption summary.
 
 ---
 
-## 4. gRPC Contracts - Matching Engine
+## 5. gRPC Contracts - Matching Engine
 
 **Service:** Matching Engine
 **Language:** C++20
@@ -634,7 +1212,7 @@ Get the authenticated user's energy generation and consumption summary.
 
 ---
 
-### 4.1 Order Service
+### 5.1 Order Service
 
 **File:** `proto/gridx/matching/v1/order.proto`
 
@@ -647,20 +1225,17 @@ option go_package = "github.com/p2p-energy-trading-platform/go-sdk/gen/gridx/mat
 
 import "google/protobuf/timestamp.proto";
 
-// Order side
 enum OrderSide {
   ORDER_SIDE_UNSPECIFIED = 0;
   ORDER_SIDE_BUY = 1;
   ORDER_SIDE_SELL = 2;
 }
 
-// Order type
 enum OrderType {
   ORDER_TYPE_UNSPECIFIED = 0;
   ORDER_TYPE_LIMIT = 1;
 }
 
-// Order status
 enum OrderStatus {
   ORDER_STATUS_UNSPECIFIED = 0;
   ORDER_STATUS_OPEN = 1;
@@ -671,7 +1246,6 @@ enum OrderStatus {
   ORDER_STATUS_REJECTED = 6;
 }
 
-// Represents a buy or sell order in the matching engine
 message Order {
   string order_id = 1;
   string user_id = 2;
@@ -688,12 +1262,10 @@ message Order {
   google.protobuf.Timestamp created_at = 13;
 }
 
-// Event published to Kafka when a new order is placed
 message OrderPlacedEvent {
   Order order = 1;
 }
 
-// Event published when an order's status changes
 message OrderUpdatedEvent {
   string order_id = 1;
   OrderStatus status = 2;
@@ -704,7 +1276,7 @@ message OrderUpdatedEvent {
 
 ---
 
-### 4.2 Trade Service
+### 5.2 Trade Service
 
 **File:** `proto/gridx/matching/v1/trade.proto`
 
@@ -717,7 +1289,6 @@ option go_package = "github.com/p2p-energy-trading-platform/go-sdk/gen/gridx/mat
 
 import "google/protobuf/timestamp.proto";
 
-// Represents a completed trade between a buyer and seller
 message Trade {
   string trade_id = 1;
   string buy_order_id = 2;
@@ -736,7 +1307,6 @@ message Trade {
   google.protobuf.Timestamp executed_at = 15;
 }
 
-// Event published to Kafka when a trade is executed
 message TradeExecutedEvent {
   Trade trade = 1;
 }
@@ -744,7 +1314,7 @@ message TradeExecutedEvent {
 
 ---
 
-### 4.3 Grid Transfer Rules
+### 5.3 Grid Transfer Rules
 
 **File:** `proto/gridx/matching/v1/grid_transfer.proto`
 
@@ -757,8 +1327,6 @@ option go_package = "github.com/p2p-energy-trading-platform/go-sdk/gen/gridx/mat
 
 import "google/protobuf/timestamp.proto";
 
-// Defines whether energy transfer between two grid zones is allowed
-// and the associated grid fee
 message GridTransferRule {
   string seller_grid_zone = 1;
   string buyer_grid_zone = 2;
@@ -768,7 +1336,6 @@ message GridTransferRule {
   google.protobuf.Timestamp updated_at = 6;
 }
 
-// Event published to the compacted Kafka topic when a grid transfer rule changes
 message GridTransferRuleUpdatedEvent {
   GridTransferRule rule = 1;
 }
@@ -776,7 +1343,7 @@ message GridTransferRuleUpdatedEvent {
 
 ---
 
-### 4.4 Recovery Service
+### 5.4 Recovery Service
 
 **File:** `proto/gridx/matching/v1/recovery.proto`
 
@@ -787,18 +1354,14 @@ package gridx.matching.v1;
 
 option go_package = "github.com/p2p-energy-trading-platform/go-sdk/gen/gridx/matching/v1;matchingv1";
 
-// Request sent by the Matching Engine to the Order Service during recovery
 message GetActiveOrdersRequest {
-  // Optional: filter by grid zone
   repeated string grid_zones = 1;
 }
 
-// Response from Order Service with active orders for recovery
 message GetActiveOrdersResponse {
   repeated Order orders = 1;
 }
 
-// Recovery service - called by Matching Engine at startup
 service RecoveryService {
   rpc GetActiveOrders(GetActiveOrdersRequest) returns (GetActiveOrdersResponse);
 }
@@ -806,14 +1369,14 @@ service RecoveryService {
 
 ---
 
-## 5. Kafka Event Contracts
+## 6. Kafka Event Contracts
 
 **Serialization:** Protocol Buffers (proto3)
 **Broker:** Apache Kafka
 
 ---
 
-### 5.1 Topic Reference
+### 6.1 Topic Reference
 
 | Topic | Type | Producer | Consumers | Description |
 |---|---|---|---|---|
@@ -822,16 +1385,18 @@ service RecoveryService {
 | `gridx.trades.v1` | Standard | Matching Engine | Settlement, Market Data, Notification | Completed trade events |
 | `gridx.grid-transfer-rules.v1` | Compacted | IoT Dispatch Service | Matching Engine | Grid transfer rule updates |
 | `gridx.meter-telemetry.v1` | Standard | IoT Pipeline | Market Data, TimescaleDB, S3 | Smart meter readings from IoT |
+| `smart-meter-raw` | Standard | MQTT-Kafka Bridge | IoT Ingest & Dispatch Service | Raw IoT smart meter telemetry |
+| `order-placements` | Standard | Order Management Service | Matching Engine | Order placement events |
+| `completed-trades` | Standard | Matching Engine | Market Ticker Service | Completed trade events for market data |
+| `market-candles` | Standard | Market Ticker Service | Cold Ingestion Engine, Web Dashboard | Candlestick market data |
+
+> **Note:** Kafka topic names are not yet finalized. Names marked above may change during implementation.
 
 ---
 
-### 5.2 `gridx.orders.v1` - Order Placed Event
-
-**Message:** `OrderPlacedEvent` (see section 4.1)
+### 6.2 `gridx.orders.v1` - Order Placed Event
 
 **Kafka Message Key:** `order_id`
-
-**Example payload (JSON representation):**
 
 ```json
 {
@@ -855,13 +1420,9 @@ service RecoveryService {
 
 ---
 
-### 5.3 `gridx.orders.updates.v1` - Order Updated Event
-
-**Message:** `OrderUpdatedEvent` (see section 4.1)
+### 6.3 `gridx.orders.updates.v1` - Order Updated Event
 
 **Kafka Message Key:** `order_id`
-
-**Example payload (JSON representation):**
 
 ```json
 {
@@ -874,13 +1435,9 @@ service RecoveryService {
 
 ---
 
-### 5.4 `gridx.trades.v1` - Trade Executed Event
-
-**Message:** `TradeExecutedEvent` (see section 4.2)
+### 6.4 `gridx.trades.v1` - Trade Executed Event
 
 **Kafka Message Key:** `trade_id`
-
-**Example payload (JSON representation):**
 
 ```json
 {
@@ -906,13 +1463,10 @@ service RecoveryService {
 
 ---
 
-### 5.5 `gridx.grid-transfer-rules.v1` - Grid Transfer Rule Event
+### 6.5 `gridx.grid-transfer-rules.v1` - Grid Transfer Rule Event
 
 **Topic type:** Compacted (`cleanup.policy=compact`)
-**Message:** `GridTransferRuleUpdatedEvent` (see section 4.3)
-**Kafka Message Key:** `seller_grid_zone:buyer_grid_zone` (e.g. `ZONE_A:ZONE_B`)
-
-**Example payload (JSON representation):**
+**Kafka Message Key:** `seller_grid_zone:buyer_grid_zone`
 
 ```json
 {
@@ -931,7 +1485,7 @@ service RecoveryService {
 
 ---
 
-## 6. IoT MQTT Telemetry Contracts
+## 7. IoT MQTT Telemetry Contracts
 
 **Broker:** Mosquitto MQTT
 **Host Port:** `8883` (Windows) / `1883` (Linux)
@@ -941,7 +1495,7 @@ service RecoveryService {
 
 ---
 
-### 6.1 Topic Structure
+### 7.1 Telemetry Topic Structure
 
 ```text
 gridx/{grid_id}/{house_id}/meter
@@ -955,17 +1509,9 @@ gridx/grid-001/house-002/meter
 gridx/grid-002/house-001/meter
 ```
 
-| Segment | Description |
-|---|---|
-| `grid_id` | Unique identifier for the grid/neighbourhood |
-| `house_id` | Unique identifier for the house within the grid |
-| `meter` | Fixed suffix - indicates smart meter reading |
-
 ---
 
-### 6.2 Smart Meter Telemetry Payload
-
-Published by the IoT Simulator on every tick interval (configurable, default every 30 seconds).
+### 7.2 Smart Meter Telemetry Payload
 
 ```json
 {
@@ -1008,7 +1554,7 @@ Published by the IoT Simulator on every tick interval (configurable, default eve
 
 ---
 
-### 6.3 Telemetry Payload Fields
+### 7.3 Telemetry Payload Fields
 
 | Field | Type | Description |
 |---|---|---|
@@ -1027,16 +1573,16 @@ Published by the IoT Simulator on every tick interval (configurable, default eve
 | `flexibleAssets.battery.present` | boolean | Whether battery is configured |
 | `flexibleAssets.battery.stateOfChargePercent` | float | Battery charge level (0–100) |
 | `flexibleAssets.battery.capacityKwh` | float | Total battery capacity |
-| `flexibleAssets.battery.netKwh` | float | Net battery effect this tick (+ charging, - discharging) |
+| `flexibleAssets.battery.netKwh` | float | Net battery effect this tick |
 | `flexibleAssets.ev.present` | boolean | Whether EV is configured |
-| `netEnergyKwh` | float | Net = solar - load - battery_net (positive = surplus) |
-| `weatherSource` | string | `LIVE` (Open-Meteo) or `FALLBACK` (clear-sky model) |
+| `netEnergyKwh` | float | Net = solar - load - battery_net |
+| `weatherSource` | string | `LIVE` or `FALLBACK` |
 | `deliverySlotStart` | string (ISO 8601) | Current 30-minute delivery slot start |
 | `deliverySlotEnd` | string (ISO 8601) | Current 30-minute delivery slot end |
 
 ---
 
-### 6.4 Weather Fallback Behaviour
+### 7.4 Weather Fallback Behaviour
 
 | `weatherSource` | Meaning |
 |---|---|
@@ -1045,11 +1591,86 @@ Published by the IoT Simulator on every tick interval (configurable, default eve
 
 ---
 
-## 7. Protobuf SDK Generation
+## 8. IoT Dispatch Contracts
+
+The Dispatch Service sends physical adjustment commands over MQTT to the IoT Simulator.
+
+### 8.1 Dispatch Topic Structure
+
+```text
+grid01/{house_id}/actuator/battery/{battery_id}
+```
+
+**Example:**
+
+```text
+grid01/house-001/actuator/battery/bat_001
+```
+
+> **Note:** This topic format is not yet finalized and may change during implementation.
+
+---
+
+### 8.2 Dispatch Command Payload
+
+```json
+{
+  "dispatch_id": "dsp_20260616_0042_001",
+  "asset_id": "bat_001",
+  "asset_type": "bess",
+  "command": "set_power_kw",
+  "target_kw": -3.0,
+  "duration_seconds": 3600,
+  "issued_at": "2026-06-16T14:00:00Z",
+  "expires_at": "2026-06-16T15:00:00Z"
+}
+```
+
+### 8.3 Dispatch Command Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `dispatch_id` | string | Unique dispatch command identifier |
+| `asset_id` | string | Target asset identifier |
+| `asset_type` | string | `bess` (battery energy storage system) or `ev` |
+| `command` | string | `set_power_kw` |
+| `target_kw` | float | Target power in kW (negative = discharge, positive = charge) |
+| `duration_seconds` | int | How long to maintain the command |
+| `issued_at` | string (ISO 8601) | When the command was issued |
+| `expires_at` | string (ISO 8601) | When the command expires |
+
+---
+
+## 9. Data Storage Tiers
+
+The IoT Ingest & Dispatch Service routes data across three storage tiers based on access speed requirements.
+
+| Tier | Technology | Access Speed | Purpose |
+|---|---|---|---|
+| Hot | Redis (In-Memory) | Sub-millisecond | Live meter feed, public keys cache, active sessions |
+| Warm | PostgreSQL + TimescaleDB | Milliseconds | Persistent order data, time-series meter readings |
+| Cold | MinIO / S3 (Parquet / CSV) | Seconds | Long-term analytical storage, ML training data |
+
+### 9.1 Storage Flow
+
+```text
+IoT Ingest & Dispatch Service
+        │
+        ├── Hot  → Redis            ← live sensor feed, public key cache
+        ├── Warm → PostgreSQL       ← standard relational data
+        │          TimescaleDB      ← time-series hyper tables
+        └── Cold → MinIO / S3       ← batch write, Parquet/CSV buckets
+```
+
+> **Future Scope:** Cold storage feeds an MLOps pipeline planned for Semester 2.
+
+---
+
+## 10. Protobuf SDK Generation
 
 The `protobuf` repository auto-generates SDKs for all services using **Buf**.
 
-### 7.1 SDK Targets
+### 10.1 SDK Targets
 
 | SDK | Repository | Language | Usage |
 |---|---|---|---|
@@ -1057,52 +1678,39 @@ The `protobuf` repository auto-generates SDKs for all services using **Buf**.
 | `typescript-sdk` | `p2p-energy-trading-platform/typescript-sdk` | TypeScript | Web Dashboard, Mobile App |
 | `cpp-sdk` | `p2p-energy-trading-platform/cpp-sdk` | C++ | Matching Engine internals |
 
-### 7.2 `buf.gen.yaml` - Generation Config
+### 10.2 `buf.gen.yaml` - Generation Config
 
 ```yaml
 version: v2
 clean: true
 plugins:
-  # Go protobuf message types
   - remote: buf.build/protocolbuffers/go
     out: gen/go
     opt:
       - paths=source_relative
-  # Go gRPC client/server stubs
   - remote: buf.build/grpc/go
     out: gen/go
     opt:
       - paths=source_relative
-  # TypeScript protobuf message types
   - remote: buf.build/bufbuild/es
     out: gen/typescript
     opt:
       - target=ts
-  # C++ protobuf message types
   - remote: buf.build/protocolbuffers/cpp
     out: gen/cpp
 ```
 
-### 7.3 Local Development Commands
+### 10.3 Local Development Commands
 
 ```bash
-# Format proto files
 buf format -w
-
-# Lint proto files
 buf lint
-
-# Check for breaking changes against main
 buf breaking --against '.git#branch=main'
-
-# Generate SDK code locally
 buf generate
-
-# Clean generated files
 rm -rf gen/
 ```
 
-### 7.4 Proto File Naming Conventions
+### 10.4 Proto File Naming Conventions
 
 | Rule | Example |
 |---|---|
@@ -1113,9 +1721,9 @@ rm -rf gen/
 
 ---
 
-## 8. Error Codes Reference
+## 11. Error Codes Reference
 
-### 8.1 REST HTTP Status Codes
+### 11.1 REST HTTP Status Codes
 
 | Status Code | Meaning | When Used |
 |---|---|---|
@@ -1129,7 +1737,7 @@ rm -rf gen/
 | `422 Unprocessable Entity` | Business rule violation | Invalid delivery slot, quantity too low |
 | `500 Internal Server Error` | Server error | Unexpected failures |
 
-### 8.2 REST Error Response Format
+### 11.2 REST Error Response Format
 
 ```json
 {
@@ -1141,7 +1749,7 @@ rm -rf gen/
 }
 ```
 
-### 8.3 gRPC Status Codes
+### 11.3 gRPC Status Codes
 
 | gRPC Status | Meaning |
 |---|---|
