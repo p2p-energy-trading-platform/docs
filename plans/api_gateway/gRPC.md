@@ -82,7 +82,6 @@ The API Gateway does not contain business logic. It forwards requests to the res
  | Service     |   | Service     |   | Service     |
  | :50055      |   | :50056      |   | :50057      |
  +-------------+   +-------------+   +-------------+
-
 ```
 
 ---
@@ -102,7 +101,6 @@ Advantages:
 - Smaller payload size
 - Faster serialization
 - Lower latency communication
-
 
 ### Strongly Typed Contracts
 
@@ -124,7 +122,6 @@ This provides:
 - Compile-time validation
 - Consistent API contracts
 - Reduced integration errors
-
 
 ### Multi-language Support
 
@@ -148,30 +145,24 @@ The API Gateway gRPC layer is responsible for:
 - Communicating with internal services
 - Preparing generated SDK integration
 
-
 The gateway does not currently expose a public gRPC API.
 
 Current architecture:
 
 ```text
 Client
-
  |
  |
 REST
-
  |
  |
 API Gateway
-
  |
  |
 gRPC Client
-
  |
  |
 Internal Services
-
 ```
 
 ---
@@ -180,7 +171,7 @@ Internal Services
 
 Current gRPC-related structure:
 
-```
+```text
 api-gateway/
 
 ├── src/
@@ -194,7 +185,6 @@ api-gateway/
 ├── routes/
 │
 └── main.ts
-
 ```
 
 ---
@@ -205,7 +195,7 @@ The gateway stores all gRPC service configuration centrally.
 
 Location:
 
-```
+```text
 src/config/sdk.ts
 ```
 
@@ -231,7 +221,6 @@ localhost:50054
 }
 
 }
-
 ```
 
 Benefits:
@@ -262,13 +251,13 @@ GridX maintains protobuf contracts in a separate repository.
 
 Repository:
 
-```
+```text
 protobuf
 ```
 
 Structure:
 
-```
+```text
 protobuf/
 
 ├── proto/
@@ -277,7 +266,6 @@ protobuf/
 ├── buf.yaml
 │
 └── buf.gen.yaml
-
 ```
 
 The protobuf repository acts as the source of truth.
@@ -286,25 +274,15 @@ Workflow:
 
 ```text
 .proto Files
-
       |
-
       |
-
 buf generate
-
       |
-
       |
-
 Generated SDKs
-
       |
-
       |
-
 GridX Services
-
 ```
 
 ---
@@ -315,7 +293,7 @@ The API Gateway will consume the generated TypeScript SDK.
 
 Repository:
 
-```
+```text
 typescript-sdk
 ```
 
@@ -325,30 +303,19 @@ Purpose:
 - Generated gRPC clients
 - Type-safe communication
 
-
 Generation flow:
 
 ```text
 protobuf repository
-
         |
-
         |
-
 buf generate
-
         |
-
         |
-
 typescript-sdk
-
         |
-
         |
-
 api-gateway
-
 ```
 
 Current status:
@@ -363,7 +330,7 @@ Actual generated clients will be connected after protobuf services are finalized
 
 Repository:
 
-```
+```text
 go-sdk
 ```
 
@@ -375,24 +342,16 @@ Potential consumers:
 - Trading Engine
 - AI Forecast Service
 
-
 Generation flow:
 
 ```text
 protobuf
-
    |
-
 buf generate
-
    |
-
 go-sdk
-
    |
-
 backend services
-
 ```
 
 Benefits:
@@ -415,7 +374,6 @@ keepaliveTimeMs:10000
 keepaliveTimeoutMs:5000
 
 keepalivePermitWithoutCalls:true
-
 ```
 
 Purpose:
@@ -451,9 +409,7 @@ Example:
 
 ```typescript
 orderClient.createOrder()
-
 ```
-
 
 ## gRPC Error Handling
 
@@ -461,15 +417,11 @@ Convert gRPC errors into REST responses.
 
 Example:
 
-```
+```text
 gRPC NOT_FOUND
-
         |
-
 HTTP 404
-
 ```
-
 
 ## Secure gRPC Communication
 
@@ -478,7 +430,6 @@ Production improvements:
 - TLS encryption
 - Service authentication
 - Certificate management
-
 
 ---
 
