@@ -59,7 +59,6 @@ To maintain system reliability, GridX requires continuous monitoring of:
 - Energy data processing
 - Infrastructure resource usage
 
-
 Prometheus will be responsible for collecting and storing time-series metrics from different GridX components.
 
 ---
@@ -84,7 +83,6 @@ This allows GridX to analyze:
 - System trends
 - Resource usage patterns
 
-
 ## Pull-Based Monitoring
 
 Prometheus periodically collects metrics from services.
@@ -107,13 +105,11 @@ HTTP Metrics Endpoint
 GridX Services
 ```
 
-
 Advantages:
 
 - Simple service integration
 - Easy debugging
 - Independent monitoring lifecycle
-
 
 ## Kubernetes / Cloud Native Support
 
@@ -172,7 +168,6 @@ Prometheus is widely used with:
                     Grafana Dashboard
 ```
 
-
 ---
 
 # 4. Prometheus Responsibilities
@@ -185,7 +180,6 @@ Prometheus will handle:
 - Detecting abnormal behaviour
 - Querying metrics using PromQL
 - Providing data source for Grafana dashboards
-
 
 Prometheus will not:
 
@@ -214,7 +208,6 @@ http_request_duration_seconds 0.45
 
 service_health_status 1
 ```
-
 
 Prometheus periodically scrapes these endpoints.
 
@@ -283,7 +276,6 @@ Prometheus configuration will be stored in:
 prometheus/prometheus.yml
 ```
 
-
 Example configuration:
 
 ```yaml
@@ -308,7 +300,6 @@ scrape_configs:
       - targets:
           - kafka-exporter:9308
 ```
-
 
 Configuration responsibilities:
 
@@ -351,13 +342,11 @@ http_request_duration_seconds
 http_errors_total
 ```
 
-
 Used for:
 
 - API reliability
 - Performance monitoring
 - Error detection
-
 
 ## gRPC Metrics
 
@@ -371,12 +360,10 @@ grpc_request_duration_seconds
 grpc_errors_total
 ```
 
-
 Used for:
 
 - Service communication monitoring
 - Detecting failed RPC calls
-
 
 ## Authentication Metrics
 
@@ -408,7 +395,6 @@ database_query_duration
 database_errors
 ```
 
-
 ## Redis
 
 Metrics:
@@ -421,7 +407,6 @@ redis_connected_clients
 redis_cache_hits
 ```
 
-
 ## Kafka
 
 Metrics:
@@ -433,7 +418,6 @@ kafka_consumer_lag
 
 kafka_broker_health
 ```
-
 
 ## Docker Containers
 
@@ -465,7 +449,6 @@ mqtt_connection_status
 mqtt_message_errors_total
 ```
 
-
 ## Kafka Connect Metrics
 
 ```text
@@ -476,7 +459,6 @@ kafka_connect_task_status
 kafka_connect_records_processed
 ```
 
-
 ## Energy Data Metrics
 
 ```text
@@ -486,7 +468,6 @@ heartbeat_messages_received_total
 
 device_online_status
 ```
-
 
 These metrics help identify:
 
@@ -500,9 +481,7 @@ These metrics help identify:
 
 Prometheus Alertmanager will be used for critical system alerts.
 
-
 Examples:
-
 
 ## Service Down Alert
 
@@ -516,7 +495,6 @@ Action:
 
 - Notify administrators
 
-
 ## High CPU Usage
 
 Condition:
@@ -529,7 +507,6 @@ Action:
 
 - Trigger warning alert
 
-
 ## Kafka Consumer Lag
 
 Condition:
@@ -541,7 +518,6 @@ consumer_lag > threshold
 Action:
 
 - Investigate message processing delays
-
 
 ## IoT Pipeline Failure
 
@@ -560,7 +536,6 @@ Action:
 # 13. Integration with Grafana
 
 Prometheus will act as the data source for Grafana dashboards.
-
 
 Architecture:
 
@@ -581,7 +556,6 @@ Grafana Dashboard
 
 ```
 
-
 Grafana will visualize:
 
 - System health
@@ -595,7 +569,6 @@ Grafana will visualize:
 # 14. Running Locally
 
 Planned Docker Compose integration:
-
 
 ```yaml
 services:
@@ -612,20 +585,17 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
 ```
 
-
 Access:
 
 ```text
 http://localhost:9090
 ```
 
-
 Verify:
 
 ```text
 Status → Targets
 ```
-
 
 Expected:
 
@@ -662,7 +632,6 @@ Add:
 - Node exporter
 - Pod monitoring
 
-
 ## Advanced Alerting
 
 Integrate:
@@ -670,7 +639,6 @@ Integrate:
 - Alertmanager
 - Email notifications
 - Slack notifications
-
 
 ## Energy Analytics Monitoring
 
@@ -681,7 +649,6 @@ Add dashboards for:
 - Trading activity
 - Market performance
 
-
 ## Production Monitoring
 
 Implement:
@@ -689,7 +656,6 @@ Implement:
 - Persistent Prometheus storage
 - High availability setup
 - Long-term metric retention
-
 
 ---
 
@@ -704,7 +670,6 @@ Implemented through this design:
 - Application monitoring approach
 - IoT pipeline monitoring
 - Grafana integration plan
-
 
 Pending implementation:
 

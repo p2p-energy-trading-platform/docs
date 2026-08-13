@@ -150,7 +150,6 @@ Grafana provides live dashboards for:
 - Service availability
 - IoT measurements
 
-
 ## Multiple Data Sources
 
 Grafana supports:
@@ -161,7 +160,6 @@ Grafana supports:
 - Loki
 - Elasticsearch
 
-
 ## Custom Dashboards
 
 Teams can create dashboards based on:
@@ -169,7 +167,6 @@ Teams can create dashboards based on:
 - Infrastructure requirements
 - Business requirements
 - IoT requirements
-
 
 ## Alerting Support
 
@@ -191,7 +188,6 @@ Grafana is responsible for:
 - Providing visualization panels
 - Managing alerts
 - Supporting operational monitoring
-
 
 Grafana is not responsible for:
 
@@ -262,7 +258,6 @@ Metrics:
 - Error rates
 - System uptime
 
-
 ## Infrastructure Dashboard
 
 Purpose:
@@ -275,7 +270,6 @@ Metrics:
 - Memory usage
 - Network traffic
 - Disk usage
-
 
 ## Microservice Dashboard
 
@@ -291,7 +285,6 @@ Services:
 - Matching Engine
 - Wallet Service
 - Trade Service
-
 
 ## IoT Dashboard
 
@@ -369,7 +362,6 @@ Business metrics:
 - Trading volume
 - Market activity
 
-
 ---
 
 # 9. Infrastructure Monitoring
@@ -387,14 +379,12 @@ Monitored services:
 - TimescaleDB
 - Redis
 
-
 Metrics:
 
 - Container availability
 - CPU usage
 - Memory usage
 - Restart count
-
 
 Example:
 
@@ -479,7 +469,6 @@ Action:
 
 - Notify development team
 
-
 ### High CPU Usage
 
 Condition:
@@ -491,7 +480,6 @@ CPU usage > 80%
 Action:
 
 - Warning alert
-
 
 ---
 
@@ -511,7 +499,6 @@ Action:
 
 - Notify operators
 
-
 ### Data Ingestion Failure
 
 Condition:
@@ -523,7 +510,6 @@ MQTT messages stopped
 Action:
 
 - Investigate pipeline failure
-
 
 ---
 
@@ -576,7 +562,6 @@ Create dashboards for:
 - Prosumers
 - Renewable generation
 
-
 ## Log Monitoring
 
 Integrate:
@@ -586,7 +571,6 @@ Integrate:
 
 For centralized logging.
 
-
 ## Distributed Tracing
 
 Integrate:
@@ -595,7 +579,6 @@ Integrate:
 - Jaeger
 
 For tracing microservice requests.
-
 
 ## Production Monitoring
 
