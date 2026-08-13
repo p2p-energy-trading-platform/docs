@@ -1,3 +1,7 @@
+---
+connie-title: IoT Ingestion Service Plan
+---
+
 # IoT Ingestion & Dispatch Service - Plan
 
 * **Author:** Hanan (M.S.H. Ahmed)
@@ -44,8 +48,6 @@ IoT Simulator --MQTT--> Kafka Connect (Confluent MQTT Source Connector) --Kafka-
 Order Service --(gRPC call, based on user preferences - see section 7)--> Dispatch Service --MQTT actuation topic--> IoT Simulator
 ```
 
-**Correction:** this diagram previously showed the Matching Engine triggering Dispatch directly. Section 7 (based on the team member's actual clarification) states the opposite - the Matching Engine has no visibility into individual assets and does *not* trigger Dispatch; an Order Service does, via gRPC. The diagram had gone stale relative to that later, more detailed section. Fixed here so the two don't contradict each other.
-
 **Confirmed from `gridx-infra`:** the MQTT-to-Kafka bridge is not custom code - it's a `kafka-connect` container running the Confluent `MqttSourceConnector` (a standard, off-the-shelf Kafka Connect plugin).
 
 > ✅ **Topic mismatch resolved.** The connector has been split into two files, `mqtt-connector-meter.json` (`mqtt.topics: gridx/+/+/meter` → `kafka.topic: iot.meter-readings`) and `mqtt-connector-heartbeat.json` (`mqtt.topics: gridx/+/+/heartbeat` → `kafka.topic: iot.heartbeats`). Both patterns correctly match what the IoT Simulator actually publishes, confirmed directly against the simulator's `topics.ts` and `tickLoop.ts`.
@@ -61,34 +63,28 @@ Order Service --(gRPC call, based on user preferences - see section 7)--> Dispat
 - **One real risk worth designing around regardless of grouping:** a Go process dies on an unrecovered panic. A bug in heartbeat processing shouldn't be able to take down meter-reading processing just because they share a process. Handlers return ordinary errors (feeding into the failure-recording path in section 3.3) rather than panicking - this sidesteps the risk entirely as long as that discipline is maintained.
 - **Partitioning / ordering:** a partitioning key is needed so all of one house's messages land in the same partition and process in order. **Likely already satisfied without further work:** Confluent's MQTT Source Connector documentation (checked directly) describes using the source MQTT topic string as the Kafka message key by default. Since each house publishes to its own unique topic (`gridx/{grid_id}/{house_id}/meter`), that string becoming the key would naturally group every message from the same house onto the same partition via Kafka's default hash-based partitioner. Treat this as *likely* true, not *confirmed* true, until verified against real traffic once the pipeline is live (section 13).
 
-### 3.1 Message format - protobuf via `go-sdk` (status: reopened - conflicting signals, needs one empirical check before implementation)
+### 3.1 Message format - JSON ingestion and future protobuf contracts
 
-Per team member direction: message types coming through Kafka need **protobuf contracts** (`.proto` schema definitions), compiled to Go types via CI/CD into the org's **`go-sdk`** repository, installed as a Go module dependency rather than hand-writing types.
+The ingestion wire format is settled. The IoT Simulator serializes meter readings and heartbeats as JSON and publishes them to the MQTT broker. The MQTT Source Connector then forwards the MQTT payload bytes unchanged into Kafka; there is no JSON-to-protobuf conversion anywhere in this path:
 
-**Confirmed, not in dispute:** `go-sdk`'s `gen/gridx/` tree currently has `grid/v1`, `order/v1`, `test/v1` - **no `iot` package yet**. New `.proto` files need authoring in the separate `protobuf` repo, following the exact convention established by the existing packages. See section 3.2 for a drafted proposal. This part of the task is unaffected by the wire-format question below.
-
-**What's actually in dispute:** whether Kafka messages arrive as binary protobuf or as JSON text, and it's worth being precise about why this isn't fully settled yet:
-
-- **Team member's position:** the protobuf layer isn't connected to the simulator; Kafka data comes as binary; the IoT Simulator is "outside the system."
-- **Direct evidence pointing the other way:** both connector configs use `value.converter: ByteArrayConverter`, which forwards whatever bytes MQTT provides completely unchanged. The simulator's own `tickLoop.ts` confirms every publish goes through `JSON.stringify(reading)` before sending. Nothing inspected so far in the actual pipeline performs a JSON→protobuf conversion.
-- **These aren't actually contradictory claims about architecture vs. implementation** - "the simulator is outside the system" is true and reasonable as a design principle, but it doesn't by itself change what bytes are physically sitting in the Kafka topic today. If something *does* perform that conversion upstream (a mechanism not yet reviewed here), team member's statement is simply correct and this section's earlier conclusion was based on an incomplete picture. If nothing does, the bytes in the topic are still JSON.
-
-**Resolves in one command, not further debate.** From the host machine (not inside a container):
-```bash
-kcat -b localhost:9092 -t iot.meter-readings -C -c 1
+```text
+IoT Simulator --JSON/MQTT--> MQTT broker --unchanged payload bytes--> Kafka --JSON bytes--> IoT Ingestion Service
 ```
-(per `docker-compose.yml`'s `KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka:29092,EXTERNAL://localhost:9092'` - `localhost:9092` is the correct external address, not `gridx-kafka:9092`, which won't resolve outside the Docker network). Install with `sudo apt install kafkacat` if not already present. Readable text starting with `{"schema_version"...` confirms JSON; unreadable/garbled bytes confirms binary.
 
-**The engineering answer that makes this not architecturally costly either way:** isolate the decode step behind one function, so nothing downstream needs to know or care which answer comes back:
+The Kafka consumer must therefore treat each record value as raw JSON bytes. At the ingestion boundary it unmarshals the JSON into input/wire structs that match the simulator payload, validates the data, and maps it into this service's internal domain types. Redis, TimescaleDB, and heartbeat-processing code operate only on those domain types and do not depend on the external JSON representation.
+
 ```go
 // internal/kafka/decode.go
 func DecodeMeterReading(raw []byte) (*models.MeterReading, error) {
-    // if JSON: json.Unmarshal into a wire struct, then map fields to models.MeterReading
-    // if binary: proto.Unmarshal(raw, &iotv1.MeterReading{}), then map to models.MeterReading
-    // Either way, this is the ONLY function that changes based on the answer above.
+    var input meterReadingJSON
+    if err := json.Unmarshal(raw, &input); err != nil {
+        return nil, fmt.Errorf("decode meter-reading JSON: %w", err)
+    }
+    return mapMeterReading(input)
 }
 ```
-The Redis writer, TimescaleDB writer, and heartbeat processor never see raw bytes - only the internal `models.MeterReading` type. This isolation is worth having regardless of how the wire-format question resolves.
+
+Protobuf has a separate role: it is the intended transport contract for future communication between the IoT Ingestion Service and other internal services, such as the planned gRPC query interface. The `iot/v1` `.proto` contracts should still be authored in the separate `protobuf` repository and generated into the organization's `go-sdk`, but those generated types are **not** used to decode the current MQTT-to-Kafka messages and protobuf is not part of the current ingestion flow. See section 3.2 for the draft contracts.
 
 ### 3.2 Proposed `iot/v1` proto contract (draft, matching established conventions)
 
@@ -455,7 +451,6 @@ SELECT grid_id FROM iot_data.grids WHERE lat IS NULL;
 
 **This section reflects the team's current best understanding, explicitly flagged by the team member as "not properly planned" yet - treat everything below as a rough direction, not a locked design.**
 
-- **The Matching Engine does not deal with individual assets at all** - it has no visibility into specific batteries/EVs, so it is *not* the thing that directly triggers Dispatch.
 - **The current rough idea:** an **Order Service** (not yet part of this plan's scope) makes a **gRPC call** to the Dispatch Service to request a change - e.g. "reduce this house's battery stored energy" - based on **user preferences** rather than a raw trade signal.
 - **Dispatch Service's job**, once triggered: translate that request into an actuation command and publish it to the IoT Simulator's `gridx/actuation` MQTT topic, targeting the correct `house_id` and `asset_id`.
 
