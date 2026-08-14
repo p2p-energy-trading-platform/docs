@@ -373,6 +373,7 @@ CREATE TABLE iot_data.meter_readings (
     net_kw                   DOUBLE PRECISION NOT NULL,
     weather_irradiance_wm2   DOUBLE PRECISION,
     cloud_cover_pct          DOUBLE PRECISION,
+    schema_version TEXT NOT NULL
     PRIMARY KEY (house_id, time, seq)
 );
 
@@ -385,11 +386,13 @@ CREATE INDEX idx_meter_readings_grid_time ON iot_data.meter_readings (grid_id, t
 -- reading's storage_assets array - a house can have more than one asset).
 CREATE TABLE iot_data.storage_asset_readings (
     time         TIMESTAMPTZ NOT NULL,
-    house_id     TEXT NOT NULL,
+    seq          BIGINT NOT NULL,
     asset_id     TEXT NOT NULL,
     soc_pct      DOUBLE PRECISION NOT NULL,
     power_kw     DOUBLE PRECISION NOT NULL,
-    PRIMARY KEY (asset_id, time)
+    asset_type     TEXT NOT NULL,
+    capacity_kwh   DOUBLE PRECISION NOT NULL,
+    PRIMARY KEY (time, seq. asset_id)
 );
 SELECT create_hypertable('iot_data.storage_asset_readings', 'time', chunk_time_interval => INTERVAL '1 day');
 CREATE INDEX idx_storage_asset_readings_house_time ON iot_data.storage_asset_readings (house_id, time DESC);
