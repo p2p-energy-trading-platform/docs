@@ -28,4 +28,12 @@ This project is a real-time, peer-to-peer energy exchange designed to eliminate 
 
 **NOTE**: Due to complexity of this project and university module working hours constraint it is not feasible to complete this project by working under fixed roles. Everyone will probably touch on several disciplines at any particular time in this project's lifetime!
 
+### Liniting rules
+
+A connie-title is necessary on every markdown file in the top of the document.
+
+Use `npx markdownlint-cli2` to check if lint issues are there and fix them.
+
+Use `npx markdownlint-cli2 --fix` to automatically fix issues related to linting (only works on issues that can be easily fixed). Other issues need to be manually fixed.
+
 --------
