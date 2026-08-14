@@ -61,7 +61,7 @@ Order Service --(gRPC call, based on user preferences - see section 7)--> Dispat
 - This service runs as a **single Kafka consumer group**, subscribed to both `iot.meter-readings` and `iot.heartbeats`, dispatching each record to the correct handler based on which topic it arrived on.
 - **Why one group, not two:** ordering isn't a factor either way - Kafka only orders within a partition, and the two message types already live on physically separate topics regardless of grouping, so there's no ordering guarantee to gain by splitting further. The real reason to split would be independent *scaling* of the much-higher-volume meter-reading stream away from heartbeat processing - at this project's scale, a single Go process handles both comfortably, and goroutines make "two topics, one process" close to free. Simpler to run and deploy while already juggling Kafka, Redis, TimescaleDB, and goose in one service.
 - **One real risk worth designing around regardless of grouping:** a Go process dies on an unrecovered panic. A bug in heartbeat processing shouldn't be able to take down meter-reading processing just because they share a process. Handlers return ordinary errors (feeding into the failure-recording path in section 3.3) rather than panicking - this sidesteps the risk entirely as long as that discipline is maintained.
-- **Partitioning / ordering:** a partitioning key is needed so all of one house's messages land in the same partition and process in order. **Likely already satisfied without further work:** Confluent's MQTT Source Connector documentation (checked directly) describes using the source MQTT topic string as the Kafka message key by default. Since each house publishes to its own unique topic (`gridx/{grid_id}/{house_id}/meter`), that string becoming the key would naturally group every message from the same house onto the same partition via Kafka's default hash-based partitioner. Treat this as *likely* true, not *confirmed* true, until verified against real traffic once the pipeline is live (section 13).
+- **Partitioning / ordering:** ordering is required independently within each stream: all meter readings for one house must remain ordered within `iot.meter-readings`, and all heartbeats for one house must remain ordered within `iot.heartbeats`. Kafka does **not** provide ordering across the two topics, so the service must not rely on a meter reading and heartbeat having a defined order relative to each other. **Likely already satisfied within each topic:** Confluent's MQTT Source Connector documentation describes using the source MQTT topic string as the Kafka record key by default. Because each house has a unique MQTT meter topic and heartbeat topic, this should consistently partition that house's records within the corresponding Kafka topic. Treat this as *likely*, not confirmed, until the keys and partitions are inspected against live traffic (section 13).
 
 ### 3.1 Message format - JSON ingestion and future protobuf contracts
 
@@ -88,7 +88,7 @@ Protobuf has a separate role: it is the intended transport contract for future c
 
 ### 3.2 Proposed `iot/v1` proto contract (draft, matching established conventions)
 
-Based directly on the style of the existing `grid_transfer_rule.proto` and `order_events.proto` (proto3, `gridx.<domain>.v1` package naming, `_UNSPECIFIED = 0` as the first enum value, the `go_package` alias pattern), and the exact field shapes the IoT Simulator already publishes (`MeterReadingPayload` / `HeartbeatPayload`):
+Based on the style of the existing `grid_transfer_rule.proto` and `order_events.proto` (proto3, `gridx.<domain>.v1` package naming, `_UNSPECIFIED = 0` as the first enum value, and the `go_package` alias pattern), the draft below carries the same telemetry concepts and values currently published by the IoT Simulator. It is a proposed future internal-service contract, not a protobuf representation of the simulator's JSON wire format. Its structure should ultimately be driven by the needs of internal API consumers rather than by a requirement to mirror the external JSON object exactly.
 
 ```protobuf
 syntax = "proto3";
@@ -158,18 +158,18 @@ message Heartbeat {
 }
 ```
 
-**Correction:** `status` was missing from this draft entirely - the real simulator payload includes it (currently always `"online"`, per the simulator's own plan, but it's a real published field and the stated goal here is to define the canonical shape of what's *actually* published, not a trimmed-down version of it). Added as field 5, which shifted the numbering of every field after it - worth double-checking nothing downstream assumed the old numbers if any code was already written against this draft.
+**Correction:** `status` was missing from this draft entirely. The simulator currently publishes it as `"online"`, and it is useful state for future internal consumers, so it has been added as field 5. This shifted the numbering of every field after it; double-check that no code was generated from the earlier draft before the contract is submitted.
 
 **Design notes - presenting this as a real decision, not a silent pick:**
 
 - **`readings`/`meta` nesting.** Two real options, not one default with an asterisk:
-  - **Flat** (as drafted above) - matches `OrderAccepted`'s style in the existing codebase, fewer types to generate and pass around, simpler Go struct mapping.
-  - **Nested** (`message MeterReadingData { solar_kw, consumption_kw, ... }` + `message WeatherMeta { weather_irradiance_wm2, cloud_cover_pct }`, referenced as fields inside `MeterReading`) - mirrors the simulator's actual JSON shape (`readings.solar_kw`, `meta.weather_irradiance_wm2`) more literally, which could matter if the wire format does turn out to be JSON (section 3.1) and a more literal 1:1 field mapping simplifies the decode step.
+  - **Flat** (as drafted above) - matches `OrderAccepted`'s style in the existing codebase, uses fewer generated types, and is simpler for internal API consumers when all fields are read together.
+  - **Nested** (`message MeterReadingData { solar_kw, consumption_kw, ... }` + `message WeatherMeta { weather_irradiance_wm2, cloud_cover_pct }`, referenced as fields inside `MeterReading`) - groups related values and may be clearer if internal consumers commonly treat measurements and weather metadata as separate concepts.
 
-  This plan defaults to flat because it matches established convention in this codebase, but it's a genuine open choice, not a settled one - confirm with the team before submitting to the `protobuf` repo.
+  The current draft defaults to flat because it matches established convention in this codebase, but this remains an internal API-design choice to confirm before submitting to the `protobuf` repo. It has no effect on the current JSON ingestion decoder.
 - No `ActuationCommand` message drafted yet - deferred until the Dispatch Service (section 7) is actually scoped.
 - This would live at `proto/gridx/iot/v1/iot_events.proto` in the `protobuf` repo, following the existing `order_events.proto` naming pattern.
-- This draft is valid regardless of how section 3.1's wire-format question resolves - it defines the canonical message shape either way.
+- This draft is independent of the settled JSON ingestion wire format in section 3.1.
 
 ### 3.3 Failure handling - dead-letter strategy
 
@@ -193,13 +193,22 @@ _, err := backoff.Retry(ctx, func() (struct{}, error) {
 }, backoff.WithMaxTries(3))
 
 if err != nil {
-    recordFailure(ctx, rawMsg, "timescale_write", err, attempts) // writes to the table below, then commit offset
+    if failureErr := recordFailure(ctx, rawMsg, "timescale_write", err, attempts); failureErr != nil {
+        // The failure was not durably recorded. Return the error and leave the
+        // Kafka offset uncommitted so this record can be attempted again.
+        return fmt.Errorf("record ingestion failure: %w", failureErr)
+    }
+    if commitErr := commitOffset(ctx, record); commitErr != nil {
+        return fmt.Errorf("commit failed-record offset: %w", commitErr)
+    }
 }
 ```
 
 **Correction:** the schema originally included an `attempt_count` column that the retry code never actually populated - it would have silently stayed at its default of 1 even after a transient failure genuinely retried 3 times, which is misleading for anyone debugging later from the table. Fixed by threading the real attempt count through to `recordFailure()` above.
 
-**Where failures land once retries are exhausted: a Postgres table, not a second Kafka topic.** A dedicated dead-letter Kafka topic earns its complexity when other services need to independently consume or replay failures, or failures must survive even if this service's own database is down. Neither applies here - nothing else in the platform is designed to read IoT failures, and a queryable table is simpler to operate for a single-owned module than standing up a second Kafka topic and its own producer just to write to it.
+**Where failures land once retries are exhausted: a Postgres table, not a second Kafka topic.** A dedicated dead-letter Kafka topic earns its complexity when other services need to independently consume or replay failures, or failures must survive even if this service's own database is down. Neither is currently required here: nothing else in the platform is designed to read IoT failures, and a queryable table is simpler to operate for a single-owned module than adding another Kafka topic and producer.
+
+This choice has one explicit consequence: `ingestion_failures` is in the same database as warm storage. If that database is unavailable, the service cannot durably record a TimescaleDB write failure there. In that case it must leave the Kafka offset uncommitted and retry after the database recovers; it must never pretend the failure was recorded and advance the offset.
 
 ```sql
 CREATE TABLE iot_data.ingestion_failures (
@@ -218,7 +227,7 @@ CREATE INDEX idx_ingestion_failures_failed_at ON iot_data.ingestion_failures (fa
 
 No retention policy on this table - it's diagnostic, not telemetry. If it grows large quickly, that's a symptom worth investigating, not something to quietly auto-delete.
 
-**Critical rule:** the Kafka offset commits *after* the failure is recorded, never left uncommitted - an uncommitted poison message blocks every message behind it in that partition forever.
+**Critical rule:** commit the Kafka offset only after either all required processing succeeds or the exhausted failure is durably recorded. A malformed poison message is recorded and then committed so it cannot block the partition forever. If recording the failure itself fails, leave the offset uncommitted and retry; temporary partition backpressure is preferable to silently losing the record.
 
 ---
 
@@ -469,7 +478,7 @@ The IoT Simulator already has the receiving end of this built and tested - this 
 
 **8.2 Dispatch command interface** - per section 7, the Order Service would make a gRPC call *to* the Dispatch Service to *trigger* an actuation - a command/write interface, belonging to Dispatch rather than Ingestion.
 
-**Neither is being built this phase.** Both should reuse the same `go-sdk`-sourced message types from section 3.2 once the proto contracts are merged, rather than defining a second, parallel set of types.
+**Neither is being built this phase.** The Ingestion query interface may reuse relevant telemetry messages from section 3.2 as response types once those contracts are finalized. The Dispatch command interface needs its own request/response contracts, including an `ActuationCommand`, and those should be designed when Dispatch is properly scoped rather than forced into the current telemetry messages.
 
 ---
 
@@ -480,7 +489,7 @@ The IoT Simulator already has the receiving end of this built and tested - this 
 - **Message types:** `go-sdk` (org repo) - proto-generated Go types, installed as a Go module dependency. A new `iot/v1` package needs authoring first - see section 3.2.
 - **Retry/backoff:** [`cenkalti/backoff/v5`](https://github.com/cenkalti/backoff) - see section 3.3 for the transient-vs-permanent failure handling pattern.
 - **Redis client:** `go-redis`, connecting to `gridx-redis:6379`.
-- **TimescaleDB/Postgres client:** `pgx`, connecting to `gridx-timescaledb` (host port 5433), using `IOT_SERVICE_USER`/`IOT_SERVICE_PASSWORD`, scoped to `iot_data` only.
+- **TimescaleDB/Postgres client:** `pgx`, using `IOT_SERVICE_USER`/`IOT_SERVICE_PASSWORD` and scoped to `iot_data` only. From another container on the Compose network it connects to `gridx-timescaledb:5432`; a process running directly on the host uses the published endpoint `localhost:5433`. Both endpoints belong in runtime configuration rather than application code.
 - **Migrations:** `pressly/goose` - see section 6.3.
 - **Testing:** `testify` (assertions) for unit and mocked-dependency tests; `testcontainers-go` (`modules/kafka`, `modules/postgres`, `modules/redis`) for integration tests - see section 10.
 - **Logging:** stdlib `log/slog` - sufficient for a service this size, no reason to pull in a third-party logger.
@@ -493,7 +502,7 @@ The IoT Simulator already has the receiving end of this built and tested - this 
 
 Four tiers, mirroring the IoT Simulator's own testing discipline (161 tests, CI-enforced) adapted for a service whose real dependencies are Kafka/Redis/Postgres rather than pure computation.
 
-**Tier 1 - Unit tests.** No containers, no network, milliseconds each. Table-driven, using `testify/require`. Covers: JSON/proto→domain mapping for every `device_class`/`asset_type` value plus at least one invalid one, the missing-`storage_assets` case, the transient-vs-permanent error classifier from section 3.3.
+**Tier 1 - Unit tests.** No containers, no network, milliseconds each. Table-driven, using `testify/require`. For the current ingestion path, covers JSON→domain mapping for every `device_class`/`asset_type` value plus at least one invalid one, the missing-`storage_assets` case, and the transient-vs-permanent error classifier from section 3.3. Protobuf/domain mapping tests belong to the future internal gRPC boundary when that interface is implemented.
 
 **Tier 2 - Mocked-dependency tests.** Still no containers - these test *control flow*, not whether Redis/Postgres itself behaves correctly. Define narrow interfaces (`HotStore`, `WarmStore`) that real clients implement in production and fakes implement in tests. Answers questions like: if the Redis write fails, does TimescaleDB still get attempted? Does a permanent decode error skip straight to `ingestion_failures` without touching either store? Does the offset stay uncommitted until both writes succeed?
 
@@ -519,9 +528,10 @@ iot-ingestion/
 ├── internal/
 │   ├── kafka/
 │   │   ├── consumer.go          # single consumer group, both topics, dispatch by topic name (section 3)
-│   │   └── decode.go            # isolated decode boundary - the one function that changes based on section 3.1's answer
+│   │   └── decode.go            # JSON wire structs, validation, and JSON→domain mapping (section 3.1)
 │   ├── redis/
-│   │   └── client.go            # hot storage writes/reads (section 4)
+│   │   ├── client.go            # hot storage writes/reads (section 4)
+│   │   └── keys.go              # builders for meter latest-state, house status, and grid membership keys
 │   ├── timescale/
 │   │   ├── client.go            # DB connection setup
 │   │   ├── migrations/          # goose migration files, embedded via embed.FS (section 6.3), incl. grid seed (section 6.4)
@@ -542,13 +552,17 @@ iot-ingestion/
 └── README.md
 ```
 
+`internal/redis/keys.go` is the single source of truth for Redis key formats. It exposes functions that build keys from domain identifiers, so callers never construct strings such as `meter:{grid_id}:{house_id}:latest` themselves. Keeping these builders beside the Redis client makes their ownership clear.
+
+Kafka topic names, broker addresses, and the consumer-group name remain runtime configuration in `config/config.yaml`. A Kafka record key is different from both a topic name and a Redis key: producers attach it to a record to influence partitioning and per-key ordering. This ingestion service only consumes records created by the MQTT Source Connector, so it does not need a `kafka_keys.go` file unless it later starts producing Kafka records or explicitly validating incoming record keys.
+
 ---
 
 ## 12. Things we still need to decide as a team
 
 **Resolved from `gridx-infra`'s bootstrap scripts, docker-compose, and connector config (no longer open):**
 - ~~Kafka container/port~~ - confirmed `gridx-kafka:9092` (external), `kafka:29092` (internal)
-- ~~TimescaleDB container/port~~ - confirmed `gridx-timescaledb`, host port 5433
+- ~~TimescaleDB container/port~~ - confirmed Compose endpoint `gridx-timescaledb:5432`; host endpoint `localhost:5433`
 - ~~Schema ownership~~ - confirmed `iot_data`, owned by `IOT_SERVICE_USER`
 - ~~Which DB instance hosts what~~ - confirmed `gridx-postgres` is Auth/Orders/Billing/Notifications only; all IoT data lives in `iot_data` on `gridx-timescaledb`
 - ~~Bridge implementation~~ - confirmed: Kafka Connect running Confluent's `MqttSourceConnector`
@@ -556,6 +570,7 @@ iot-ingestion/
 - ~~Exact Kafka topic names~~ - confirmed: `iot.meter-readings` and `iot.heartbeats`
 
 **Resolved by team member (no longer open):**
+- ~~Kafka ingestion wire format~~ - confirmed JSON bytes forwarded unchanged from MQTT through Kafka Connect; protobuf is reserved for future internal service contracts (section 3.1)
 - ~~Meter readings vs heartbeats sharing one Kafka topic~~ - confirmed split into two, implemented (section 2)
 - ~~`iot_data` table design approach~~ - confirmed: hypertables + plain tables split
 - ~~Heartbeat storage~~ - confirmed: no historical hypertable, only `last_heartbeat_at` updates
@@ -573,10 +588,9 @@ iot-ingestion/
 - ~~Testing strategy~~ - resolved: four-tier plan (section 10)
 - ~~Kafka client library~~ - resolved: `franz-go` (section 9)
 - ~~Consumer group structure~~ - resolved: single group, both topics, topic-based dispatch (section 3)
-- ~~Partitioning~~ - likely resolved: Confluent's connector docs confirm topic-as-key default behavior, satisfying the ordering requirement without extra config. Still worth a live confirm once traffic flows (see below).
+- ~~Partitioning design~~ - ordering is required separately within each Kafka topic; the connector's documented topic-as-key behavior should satisfy per-house ordering within each stream without extra config. The actual keys and partitions still need live verification (see below).
 
 **Still open:**
-- 🔴 **The protobuf/JSON wire format question - reopened, not resolved.** Team member states Kafka data arrives as binary; direct evidence (connector's `ByteArrayConverter`, simulator's confirmed `JSON.stringify()`) suggests otherwise unless an unreviewed upstream mechanism performs the conversion. Resolves with one command: `kcat -b localhost:9092 -t iot.meter-readings -C -c 1` (see section 3.1 for the corrected hostname and full reasoning). Worth raising this specific question back to the team member - not just deciding privately - since it hinges on infrastructure neither of us has fully traced yet.
 - **Whether the new connector configs are actually registered with Kafka Connect and verified against live simulator traffic** - files exist and topic patterns match on paper, but end-to-end verification is still pending (section 13).
 - **Whether the topic-as-key partitioning assumption actually holds live** - plausible per documentation, worth confirming once traffic is flowing.
 - **Compression policy** - proposed in section 6.2 but not yet confirmed by the team, unlike retention.
@@ -587,9 +601,9 @@ iot-ingestion/
 
 ## 13. Note on the Kafka Connect connector setup
 
-**Status: topic pattern fixed (section 2), two items remain before this is fully closed out.**
+**Status: topic pattern and JSON payload handling are settled; live end-to-end verification remains before this is fully closed out.**
 
 - ~~File(s) to change~~ - done: replaced by `mqtt-connector-meter.json` and `mqtt-connector-heartbeat.json`.
 - ~~Registration script~~ - confirmed: `scripts/register-connectors.sh` correctly references both new files and POSTs each to the Kafka Connect REST API. Must be run manually after `docker compose up -d` - it does not run automatically.
-- **Whether the connector configs themselves need to change for protobuf** - depends entirely on section 3.1's still-open wire-format question. If the wire format is confirmed as JSON (matching current direct evidence), no further connector change is needed - the JSON→protobuf-struct decode happens inside this service (section 3.1's isolated decode function). If it's confirmed as genuinely binary, something upstream of this service - not yet identified - must be performing that conversion, and that's a question for whoever owns the connector/bridge setup, not something this service can resolve on its own.
-- **Not yet confirmed:** live, end-to-end verification - running the IoT Simulator, confirming both connectors show as running via Kafka Connect's REST API or `scripts/health-check.sh`, and confirming real messages land in `iot.meter-readings`/`iot.heartbeats` (e.g. via the `kcat` command in section 3.1, which resolves this and the wire-format question in the same step).
+- **No protobuf-related connector change is needed:** the connector continues forwarding the simulator's JSON payload bytes unchanged. Protobuf is introduced only at future internal service boundaries (section 3.1).
+- **Not yet confirmed:** live, end-to-end verification - run the IoT Simulator, confirm both connectors are running via Kafka Connect's REST API or `scripts/health-check.sh`, consume sample records from `iot.meter-readings` and `iot.heartbeats`, and verify their JSON values, record keys, and partitions.
