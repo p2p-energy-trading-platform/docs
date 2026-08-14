@@ -31,7 +31,7 @@ This service also owns two components that are **documented in this plan but not
 
 ## 2. Where this sits in the platform
 
-```
+```text
 IoT Simulator --MQTT--> Kafka Connect (Confluent MQTT Source Connector) --Kafka--> IoT Ingestion Service
                                                                                             |
                                                                               +-------------+-------------+
@@ -174,6 +174,7 @@ message Heartbeat {
 ### 3.3 Failure handling - dead-letter strategy
 
 **Two failure tiers, handled differently:**
+
 - **Transient** (a Redis timeout, a brief DB connection blip) - usually self-resolves within seconds. Retry with bounded exponential backoff.
 - **Permanent** (malformed payload, a `device_class` value that doesn't map to anything known) - retrying produces the identical error every time. Fail immediately rather than burning through retry attempts.
 
@@ -254,14 +255,17 @@ This section spells out the exact flow, since a heartbeat can represent either a
 When a `Heartbeat` message is consumed from Kafka, this service performs the following, **in order**:
 
 **Step 0 - Warm storage, defensive grid auto-create (added during final review - see section 6.4 for full reasoning):**
+
 ```sql
 INSERT INTO iot_data.grids (grid_id, lat, lon)
 VALUES ($1, NULL, NULL)
 ON CONFLICT (grid_id) DO NOTHING;
 ```
+
 This exists purely as a safety net. Grids are normally seeded in advance via migration (section 6.4) with real coordinates - this statement only ever fires if a heartbeat arrives for a `grid_id` that was never seeded, preventing the next step's foreign key from failing outright. `ON CONFLICT DO NOTHING` guarantees this never overwrites a properly-seeded grid's real coordinates with nulls.
 
 **Step 1 - Warm storage, house registry:**
+
 ```sql
 INSERT INTO iot_data.houses (house_id, grid_id, device_class, rated_solar_kw, first_seen_at, last_heartbeat_at)
 VALUES ($1, $2, $3, $4, now(), now())
@@ -271,9 +275,11 @@ ON CONFLICT (house_id) DO UPDATE SET
     -- these are set once at first discovery; if they need to change later,
     -- that should be a deliberate decision, not a silent overwrite on every heartbeat.
 ```
+
 This single `INSERT ... ON CONFLICT` handles both cases in one statement: if `house_id` has never been seen before, it's inserted as a brand-new row. If it already exists, only `last_heartbeat_at` is refreshed.
 
 **Step 2 - Warm storage, flexible asset registry (for each asset in the heartbeat's `flexible_assets` array):**
+
 ```sql
 INSERT INTO iot_data.flexible_assets (asset_id, house_id, asset_type, capacity_kwh, max_charge_kw, max_discharge_kw, v2g_capable, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
@@ -284,14 +290,17 @@ ON CONFLICT (asset_id) DO UPDATE SET
     v2g_capable = EXCLUDED.v2g_capable,
     updated_at = now();
 ```
+
 Unlike the house record, asset specs **are** refreshed on every heartbeat - reasonable, since hardware specs being corrected/updated is plausible and there's no strong reason to lock them the way `device_class` is treated above.
 
 **Step 3 - Hot storage (Redis):**
-```
+
+```text
 HSET house:{house_id}:status status "online" last_heartbeat_at "<now>"
 EXPIRE house:{house_id}:status 600
 SADD grid:{grid_id}:houses {house_id}
 ```
+
 Both operations are safe to run unconditionally on every heartbeat, new device or not.
 
 **What does NOT get written to Redis on a heartbeat:** asset specs (capacity, max charge/discharge kw) are only stored in TimescaleDB's registry tables, not duplicated into Redis. Hot storage is for *live, frequently-changing state* - static hardware specs that change rarely are already fast to look up in Postgres via primary key.
@@ -430,6 +439,7 @@ SELECT add_compression_policy('iot_data.storage_asset_readings', INTERVAL '7 day
 ```bash
 go install github.com/pressly/goose/v3/cmd/goose@latest
 ```
+
 Migration files live under `internal/timescale/migrations/`, embedded via `embed.FS`, applied via `goose.Up()` programmatically on startup before the Kafka consumer starts.
 
 ### 6.4 Grid provisioning - seed data and defensive fallback
@@ -448,11 +458,13 @@ INSERT INTO iot_data.grids (grid_id, lat, lon) VALUES
     ('grid03', 7.8731, 80.6550)
 ON CONFLICT (grid_id) DO NOTHING;
 ```
+
 If a new grid is added to the simulator's config later, that's a *new* migration appending a row - never an edit to this one, same discipline as the schema migrations themselves.
 
 **Part 2 - defend against an unseeded grid_id showing up anyway.** Two repos, two people, a config drifting out of sync is a realistic failure mode. `houses.grid_id REFERENCES grids.grid_id` means a heartbeat for a grid nobody seeded would otherwise fail the whole house upsert with a foreign key violation. Section 5's Step 0 handles this - a defensive `INSERT ... ON CONFLICT DO NOTHING` with `NULL` coordinates, run immediately before the house upsert. This is why `grids.lat`/`grids.lon` are nullable in section 6.1 - there are legitimately two ways a grid row is created (curated seed with known coordinates, or auto-discovered via heartbeat with none yet), and `ON CONFLICT DO NOTHING` guarantees the defensive path never clobbers a properly-seeded row.
 
 **Side benefit:** a grid row sitting with `lat IS NULL` becomes a visible, queryable "someone forgot to provision this" signal instead of a crash:
+
 ```sql
 SELECT grid_id FROM iot_data.grids WHERE lat IS NULL;
 ```
@@ -475,6 +487,7 @@ The IoT Simulator already has the receiving end of this built and tested - this 
 ## 8. gRPC interfaces (planned - not implemented in this phase)
 
 **8.1 Ingestion query interface** - other services will need to *read* hot/warm data:
+
 - `GetLatestReading(house_id)` - hits Redis
 - `GetHistoricalReadings(house_id, start_time, end_time)` - hits TimescaleDB
 - `GetGridSummary(grid_id)` - aggregate view across a grid's houses
@@ -521,7 +534,7 @@ Four tiers, mirroring the IoT Simulator's own testing discipline (161 tests, CI-
 
 **Note on `internal/health/` below:** the `/healthz` endpoint was never explicitly requested by the team member - it's included because every other service in `gridx-infra`'s `docker-compose.yml` already has a healthcheck, and matching that established convention seemed like a reasonable default. Flagging this plainly rather than presenting it as if it were a stated requirement - drop it if it's not wanted.
 
-```
+```text
 iot-ingestion/
 ├── go.mod                          # depends on github.com/p2p-energy-trading-platform/go-sdk
 ├── go.sum
@@ -564,6 +577,7 @@ Kafka topic names, broker addresses, and the consumer-group name remain runtime 
 ## 12. Things we still need to decide as a team
 
 **Resolved from `gridx-infra`'s bootstrap scripts, docker-compose, and connector config (no longer open):**
+
 - ~~Kafka container/port~~ - confirmed `gridx-kafka:9092` (external), `kafka:29092` (internal)
 - ~~TimescaleDB container/port~~ - confirmed Compose endpoint `gridx-timescaledb:5432`; host endpoint `localhost:5433`
 - ~~Schema ownership~~ - confirmed `iot_data`, owned by `IOT_SERVICE_USER`
@@ -573,6 +587,7 @@ Kafka topic names, broker addresses, and the consumer-group name remain runtime 
 - ~~Exact Kafka topic names~~ - confirmed: `iot.meter-readings` and `iot.heartbeats`
 
 **Resolved by team member (no longer open):**
+
 - ~~Kafka ingestion wire format~~ - confirmed JSON bytes forwarded unchanged from MQTT through Kafka Connect; protobuf is reserved for future internal service contracts (section 3.1)
 - ~~Meter readings vs heartbeats sharing one Kafka topic~~ - confirmed split into two, implemented (section 2)
 - ~~`iot_data` table design approach~~ - confirmed: hypertables + plain tables split
@@ -586,6 +601,7 @@ Kafka topic names, broker addresses, and the consumer-group name remain runtime 
 - ~~Dispatch Service trigger mechanism~~ - rough direction confirmed, flagged "not properly planned," treat as tentative
 
 **Resolved during final pre-development review (this pass):**
+
 - ~~Grid lat/lon has no data source~~ - resolved via seed migration + defensive auto-create fallback (section 6.4)
 - ~~Dead-letter / poison-message strategy~~ - resolved: two-tier retry via `cenkalti/backoff/v5` + `ingestion_failures` table (section 3.3)
 - ~~Testing strategy~~ - resolved: four-tier plan (section 10)
@@ -594,6 +610,7 @@ Kafka topic names, broker addresses, and the consumer-group name remain runtime 
 - ~~Partitioning design~~ - ordering is required separately within each Kafka topic; the connector's documented topic-as-key behavior should satisfy per-house ordering within each stream without extra config. The actual keys and partitions still need live verification (see below).
 
 **Still open:**
+
 - **Whether the new connector configs are actually registered with Kafka Connect and verified against live simulator traffic** - files exist and topic patterns match on paper, but end-to-end verification is still pending (section 13).
 - **Whether the topic-as-key partitioning assumption actually holds live** - plausible per documentation, worth confirming once traffic is flowing.
 - **Compression policy** - proposed in section 6.2 but not yet confirmed by the team, unlike retention.
