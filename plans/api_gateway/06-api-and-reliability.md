@@ -1,3 +1,7 @@
+---
+connie-title: API Gateway - Public API & Reliability
+---
+
 # Public API and Reliability
 
 ## API contract

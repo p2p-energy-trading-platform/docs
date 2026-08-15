@@ -1,3 +1,7 @@
+---
+connie-title: API Gateway Plan 
+---
+
 # GridX API Gateway Plan
 
 This directory contains the proposed implementation plan for the GridX API Gateway. It separates architecture decisions from repository setup instructions so that each subject can be reviewed and changed independently.

@@ -1,3 +1,7 @@
+---
+connie-title: API Gateway - Operations, observability & Security
+---
+
 # Operations, Observability, and Security
 
 ## Configuration principles

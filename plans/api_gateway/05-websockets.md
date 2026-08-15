@@ -1,3 +1,7 @@
+---
+connie-title: API Gateway - Websockets
+---
+
 # WebSocket Plan
 
 ## Purpose

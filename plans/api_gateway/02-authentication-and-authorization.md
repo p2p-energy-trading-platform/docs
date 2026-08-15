@@ -1,3 +1,7 @@
+---
+connie-title: API Gateway - Authentication & Authorization
+---
+
 # Authentication and Authorization
 
 ## Decision: RS256 access tokens with JWKS

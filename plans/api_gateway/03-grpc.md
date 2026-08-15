@@ -1,3 +1,7 @@
+---
+connie-title: API Gateway - gRPC plan
+---
+
 # Internal gRPC Plan
 
 ## Scope

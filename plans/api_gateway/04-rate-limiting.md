@@ -1,3 +1,7 @@
+---
+connie-title: API Gateway - Rate Limiting
+---
+
 # Redis-Backed Rate Limiting
 
 ## Goal

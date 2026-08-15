@@ -1,3 +1,7 @@
+---
+connie-title: API Gateway - Folder structure 
+---
+
 # Proposed Repository and Folder Structure
 
 ## Assessment of the legacy structure

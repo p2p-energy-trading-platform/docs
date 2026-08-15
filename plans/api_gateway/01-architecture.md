@@ -1,3 +1,7 @@
+---
+connie-title: API Gateway - Architecture
+---
+
 # Architecture and Service Boundaries
 
 ## Responsibilities
