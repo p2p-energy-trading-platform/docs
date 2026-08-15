@@ -228,9 +228,7 @@ CREATE INDEX idx_ingestion_failures_failed_at ON iot_data.ingestion_failures (fa
 
 No retention policy on this table - it's diagnostic, not telemetry. If it grows large quickly, that's a symptom worth investigating, not something to quietly auto-delete.
 
-**Grid admission rule:** after decoding either a `MeterReading` or `Heartbeat`, verify that its `grid_id` already exists in `iot_data.grids` (avoid direct querying this because it will add unnecessary load to database) before writing anything to Redis or the telemetry/registry tables. An unknown grid is a permanent provisioning error, recorded with `failure_stage = 'grid_validation'`; its raw payload is thereby quarantined for investigation or controlled manual replay, and its Kafka offset is committed only after that failure record is durable. A database error while checking the grid is transient and must not be misclassified as an unknown grid. Ingestion must never create a grid from telemetry. This prevents configuration mistakes or untrusted messages from silently expanding the system's accepted grid boundary.
-
-**NOTE**: Direct querying database while the system is reading each `MeterReading` or `Heartbeat` input is problematic. A better option is to load `iot_data.grids` during startup.
+**Grid admission rule:** after decoding either a `MeterReading` or `Heartbeat`, check its `grid_id` against the in-memory grid-registry snapshot described in section 6.5 before writing anything to Redis or the telemetry/registry tables. This is an O(1) map lookup and performs no per-message database query. An unknown grid is a permanent provisioning error, recorded with `failure_stage = 'grid_validation'`; its raw payload is thereby quarantined for investigation or controlled manual replay, and its Kafka offset is committed only after that failure record is durable. Ingestion must never create a grid from telemetry. This prevents configuration mistakes or untrusted messages from silently expanding the system's accepted grid boundary.
 
 **Critical rule:** commit the Kafka offset only after either all required processing succeeds or the exhausted failure is durably recorded. A malformed poison message is recorded and then committed so it cannot block the partition forever. If recording the failure itself fails, leave the offset uncommitted and retry; temporary partition backpressure is preferable to silently losing the record.
 
@@ -260,17 +258,9 @@ This section spells out the exact flow, since a heartbeat can represent either a
 
 When a `Heartbeat` message is consumed from Kafka, this service performs the following, **in order**:
 
-**Step 0 - Warm storage, validate the provisioned grid (see section 6.4):**
+**Step 0 - Admission, validate the provisioned grid (see sections 6.4 and 6.5):**
 
-```sql
-SELECT EXISTS (
-    SELECT 1
-    FROM iot_data.grids
-    WHERE grid_id = $1
-);
-```
-
-Continue only when the grid exists. If it does not, perform no house, asset, telemetry, or Redis writes; record the raw heartbeat in `ingestion_failures` with `failure_stage = 'grid_validation'` as described in section 3.3. Grids are administrative provisioning data and must never be discovered or created from a heartbeat.
+Look up `grid_id` in the current immutable in-memory grid-registry snapshot. Continue only when the grid exists. This lookup must not query Postgres. If the ID is absent, perform no house, asset, telemetry, or Redis writes; record the raw heartbeat in `ingestion_failures` with `failure_stage = 'grid_validation'` as described in section 3.3. Grids are administrative provisioning data and must never be discovered or created from a heartbeat.
 
 **Step 1 - Warm storage, house registry:**
 
@@ -469,7 +459,7 @@ ON CONFLICT (grid_id) DO NOTHING;
 
 If a new grid is added to the simulator's config later, provision it in `iot_data.grids` through a new migration (or a future authenticated administrative provisioning workflow) before enabling that grid's publisher. Never edit an already-applied migration. Deployment ordering is therefore: apply the grid-provisioning change, verify the row and its coordinates, and only then start or enable telemetry for that grid.
 
-**Unknown grids are rejected, not auto-created.** Configuration drift between repositories is a realistic failure mode, but accepting it would turn a typo or untrusted message into a new administrative entity with incomplete metadata. Both meter-reading and heartbeat handlers therefore check `iot_data.grids` before any warm- or hot-storage write. An unknown `grid_id` follows section 3.3's permanent-failure path with `failure_stage = 'grid_validation'`. The durable failure row preserves the original payload for investigation and controlled manual replay after provisioning, while preventing the bad record from blocking its Kafka partition indefinitely.
+**Unknown grids are rejected, not auto-created.** Configuration drift between repositories is a realistic failure mode, but accepting it would turn a typo or untrusted message into a new administrative entity with incomplete metadata. Both meter-reading and heartbeat handlers therefore check the bootstrapped in-memory registry before any warm- or hot-storage write. An unknown `grid_id` follows section 3.3's permanent-failure path with `failure_stage = 'grid_validation'`. The durable failure row preserves the original payload for investigation and controlled manual replay after provisioning, while preventing the bad record from blocking its Kafka partition indefinitely.
 
 Provisioning can be verified before enabling telemetry:
 
@@ -480,6 +470,38 @@ WHERE grid_id = $1;
 ```
 
 The query must return exactly one row with the expected coordinates. `lat` and `lon` are `NOT NULL`, so partially provisioned placeholder grids cannot be admitted.
+
+### 6.5 Startup grid-registry bootstrap
+
+Per-message queries to `iot_data.grids` would put database latency and load directly on both high-volume ingestion paths. Instead, each ingestion-service instance owns a small in-memory registry containing the currently provisioned grids. The snapshot may retain the full `grid_id`, `lat`, and `lon` records, although admission currently needs only an O(1) lookup by `grid_id`.
+
+**Startup bootstrap order:**
+
+1. Connect to TimescaleDB and apply goose migrations.
+2. Load all provisioned grids with `SELECT grid_id, lat, lon FROM iot_data.grids`.
+3. Validate the result and build a new immutable `map[string]Grid` snapshot. An empty registry is a startup error because this deployment expects the seed migration from section 6.4.
+4. Publish the snapshot atomically, then mark grid admission ready.
+5. Start the background registry refresher.
+6. Only after those steps succeed, start the Kafka consumer and allow `/readyz` to report ready.
+
+If the initial query fails or produces invalid data, fail closed: do not start Kafka consumption. The container can retry startup according to the deployment restart policy, but it must never run with an empty fallback allowlist or accept every grid as a fallback.
+
+### 6.6 Runtime grid-registry refresh
+
+**Refreshing while the service is running:** use a configurable periodic full-snapshot refresh, defaulting to **120 seconds**. Grids are a small administrative registry, so one query per service instance every 120 seconds is inexpensive, predictable, and more reliable than using PostgreSQL `LISTEN/NOTIFY` alone, whose notifications can be missed while a connection is down.
+
+**NOTE**: New grids will not get created frequently so having 30s interval is not really needed!
+
+Each refresh performs the following:
+
+1. Query all rows from `iot_data.grids` into a new map without changing the live snapshot.
+2. Validate the complete result.
+3. Atomically swap the new immutable snapshot into place using `atomic.Pointer` (or a short-held `RWMutex`). Readers see either the complete old snapshot or the complete new one, never a partially refreshed map.
+4. Emit the loaded grid count, refresh duration, added/removed grid IDs, and `grid_registry_last_successful_refresh` metric/log field.
+
+If a refresh fails, retain the last known-good snapshot, report the failure, and retry at the next interval. Never clear or partially mutate the live registry. Message handlers continue using the last known-good provisioned set and still perform no database query on a cache miss. This avoids turning arbitrary unknown IDs into database traffic.
+
+For a new grid, the operational order is: provision the database row, wait until every ingestion instance reports a successful refresh containing that `grid_id`, and only then enable its telemetry publisher. Messages sent before that rollout completes are correctly quarantined as unknown-grid failures and require controlled manual replay. At this project's scale, periodic snapshot refresh is the recommended primary mechanism; a PostgreSQL notification may be added later only as a low-latency wake-up hint, while retaining periodic refresh as the recovery/reconciliation mechanism.
 
 ---
 
@@ -530,11 +552,11 @@ The IoT Simulator already has the receiving end of this built and tested - this 
 
 Four tiers, mirroring the IoT Simulator's own testing discipline (161 tests, CI-enforced) adapted for a service whose real dependencies are Kafka/Redis/Postgres rather than pure computation.
 
-**Tier 1 - Unit tests.** No containers, no network, milliseconds each. Table-driven, using `testify/require`. For the current ingestion path, covers JSON→domain mapping for every `device_class`/`asset_type` value plus at least one invalid one, the missing-`storage_assets` case, and the transient-vs-permanent error classifier from section 3.3, including unknown grids as permanent validation failures. Protobuf/domain mapping tests belong to the future internal gRPC boundary when that interface is implemented.
+**Tier 1 - Unit tests.** No containers, no network, milliseconds each. Table-driven, using `testify/require`. For the current ingestion path, covers JSON→domain mapping for every `device_class`/`asset_type` value plus at least one invalid one, the missing-`storage_assets` case, the transient-vs-permanent error classifier from section 3.3, unknown grids as permanent validation failures, and atomic grid-registry snapshot replacement. Protobuf/domain mapping tests belong to the future internal gRPC boundary when that interface is implemented.
 
-**Tier 2 - Mocked-dependency tests.** Still no containers - these test *control flow*, not whether Redis/Postgres itself behaves correctly. Define narrow interfaces (`HotStore`, `WarmStore`) that real clients implement in production and fakes implement in tests. Answers questions like: if the Redis write fails, does TimescaleDB still get attempted? Does an unknown grid skip all registry, telemetry, and Redis writes and go straight to `ingestion_failures`? Does the offset remain uncommitted until either normal processing succeeds or the failure is durably recorded?
+**Tier 2 - Mocked-dependency tests.** Still no containers - these test *control flow*, not whether Redis/Postgres itself behaves correctly. Define narrow interfaces (`HotStore`, `WarmStore`, `GridLoader`) that real clients implement in production and fakes implement in tests. Answers questions like: does Kafka consumption remain stopped until the initial grid snapshot loads? Does a failed runtime refresh preserve the last known-good snapshot? Does an unknown grid skip all registry, telemetry, and Redis writes and go straight to `ingestion_failures` without querying Postgres? Does the offset remain uncommitted until either normal processing succeeds or the failure is durably recorded?
 
-**Tier 3 - Integration tests via `testcontainers-go`.** Real, ephemeral containers spun up per test run: `testcontainers-go/modules/kafka` (KRaft-mode), `testcontainers-go/modules/postgres` (works against a `timescale/timescaledb` image too, since it's still Postgres underneath), `testcontainers-go/modules/redis`. Answers: do goose migrations apply clean on a fresh schema? Is the `meter_readings` upsert genuinely idempotent (write the same `house_id`/`time`/`seq` twice, assert exactly one row)? Does a second heartbeat for a known house update only `last_heartbeat_at`, not `device_class`? Are unknown-grid meter readings and heartbeats quarantined without creating a grid or writing to Redis? Is a known house rejected if a heartbeat reports it under a different grid?
+**Tier 3 - Integration tests via `testcontainers-go`.** Real, ephemeral containers spun up per test run: `testcontainers-go/modules/kafka` (KRaft-mode), `testcontainers-go/modules/postgres` (works against a `timescale/timescaledb` image too, since it's still Postgres underneath), `testcontainers-go/modules/redis`. Answers: do goose migrations apply clean on a fresh schema? Does startup bootstrap load the seeded grids before consumption begins? Does inserting a new grid become visible after a runtime refresh without restarting the service? Does a refresh failure retain the old snapshot? Is the `meter_readings` upsert genuinely idempotent (write the same `house_id`/`time`/`seq` twice, assert exactly one row)? Does a second heartbeat for a known house update only `last_heartbeat_at`, not `device_class`? Are unknown-grid meter readings and heartbeats quarantined without creating a grid or writing to Redis? Is a known house rejected if a heartbeat reports it under a different grid?
 
 **Tier 4 - Manual, one-time, end-to-end.** Real simulator, real Kafka Connect, real this-service, actually pointed at each other. This is where section 13's still-open live-verification item gets closed for good - no amount of testcontainers substitutes for checking the actual seam between this service and the real upstream pipeline.
 
@@ -544,7 +566,7 @@ Four tiers, mirroring the IoT Simulator's own testing discipline (161 tests, CI-
 
 ## 11. Repository structure (proposed)
 
-**Note on `internal/health/` below:** the `/healthz` endpoint was never explicitly requested by the team member - it's included because every other service in `gridx-infra`'s `docker-compose.yml` already has a healthcheck, and matching that established convention seemed like a reasonable default. Flagging this plainly rather than presenting it as if it were a stated requirement - drop it if it's not wanted.
+**Note on `internal/health/` below:** `/healthz` provides basic process liveness to match the other services in `gridx-infra`. `/readyz` is now required by the startup-bootstrap design in section 6.5: it must remain false until the initial grid registry has loaded and Kafka consumption is safe to start.
 
 ```text
 iot-ingestion/
@@ -552,13 +574,15 @@ iot-ingestion/
 ├── go.sum
 ├── cmd/
 │   └── ingestion/
-│       └── main.go              # starts migrations, then the Kafka consumer + storage writers
+│       └── main.go              # migrations → grid bootstrap/refresher → Kafka consumer (sections 6.5-6.6)
 ├── internal/
 │   ├── kafka/
 │   │   ├── consumer.go          # single consumer group, both topics, dispatch by topic name (section 3)
 │   │   └── decode.go            # JSON wire structs, validation, and JSON→domain mapping (section 3.1)
 │   ├── admission/
-│   │   └── grid.go              # shared pre-provisioned-grid check for both message types (sections 3.3 and 6.4)
+│   │   ├── registry.go          # immutable snapshot and O(1) grid admission lookup
+│   │   ├── postgres_loader.go   # loads complete grid snapshots from iot_data.grids
+│   │   └── refresher.go         # startup bootstrap and periodic atomic refresh (sections 6.5-6.6)
 │   ├── redis/
 │   │   ├── client.go            # hot storage writes/reads (section 4)
 │   │   └── keys.go              # builders for meter latest-state, house status, and grid membership keys
@@ -572,19 +596,22 @@ iot-ingestion/
 │   ├── models/
 │   │   └── domain.go            # this service's own internal domain structs (NOT go-sdk proto types - see section 3.1)
 │   ├── health/
-│   │   └── handler.go           # minimal /healthz - not explicitly requested, see note above
+│   │   ├── handler.go           # minimal /healthz liveness endpoint
+│   │   └── readiness.go         # /readyz stays false until grid bootstrap succeeds
 │   └── dispatch/                # placeholder package, not implemented yet
 ├── test/
 │   └── integration/             # testcontainers-go tests (section 10, Tier 3)
 ├── grpc/                        # placeholder for future gRPC service, using go-sdk types
 ├── config/
-│   └── config.yaml              # Kafka brokers, Redis host, DB connection, topic names
+│   └── config.yaml              # Kafka/Redis/DB/topics + grid_registry_refresh_interval
 └── README.md
 ```
 
 `internal/redis/keys.go` is the single source of truth for Redis key formats. It exposes functions that build keys from domain identifiers, so callers never construct strings such as `meter:{grid_id}:{house_id}:latest` themselves. Keeping these builders beside the Redis client makes their ownership clear.
 
-Kafka topic names, broker addresses, and the consumer-group name remain runtime configuration in `config/config.yaml`. A Kafka record key is different from both a topic name and a Redis key: producers attach it to a record to influence partitioning and per-key ordering. This ingestion service only consumes records created by the MQTT Source Connector, so it does not need a `kafka_keys.go` file unless it later starts producing Kafka records or explicitly validating incoming record keys.
+`internal/admission/registry.go` is the single admission path shared by meter-reading and heartbeat handlers. `postgres_loader.go` owns the only query that loads `iot_data.grids`, while `refresher.go` controls initial bootstrap, the refresh ticker, validation, and atomic snapshot replacement. Keeping those responsibilities separate makes it straightforward to test that high-volume handlers never call Postgres directly.
+
+Kafka topic names, broker addresses, the consumer-group name remain runtime configuration in `config/config.yaml`. A Kafka record key is different from both a topic name and a Redis key: producers attach it to a record to influence partitioning and per-key ordering. This ingestion service only consumes records created by the MQTT Source Connector, so it does not need a `kafka_keys.go` file unless it later starts producing Kafka records or explicitly validating incoming record keys.
 
 ---
 
@@ -617,6 +644,7 @@ Kafka topic names, broker addresses, and the consumer-group name remain runtime 
 **Resolved during final pre-development review (this pass):**
 
 - ~~Grid lat/lon has no data source~~ - resolved via explicit provisioning migrations; unknown-grid telemetry is quarantined and never creates grids (sections 3.3 and 6.4)
+- ~~Per-message grid validation database load~~ - resolved via fail-closed startup bootstrap plus periodic atomic in-memory snapshot refresh (sections 6.5 and 6.6)
 - ~~Dead-letter / poison-message strategy~~ - resolved: two-tier retry via `cenkalti/backoff/v5` + `ingestion_failures` table (section 3.3)
 - ~~Testing strategy~~ - resolved: four-tier plan (section 10)
 - ~~Kafka client library~~ - resolved: `franz-go` (section 9)
