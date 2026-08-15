@@ -114,6 +114,8 @@ Deliver:
 Acceptance:
 
 - Plaintext production fallback is impossible.
+- Local plaintext transport is isolated to explicit development configuration.
+- Verified claims are propagated as canonical metadata, and spoofed client identity headers cannot override them.
 - Unsafe mutations are not automatically replayed without idempotency.
 - Contract and dependency-failure tests pass.
 
@@ -137,7 +139,7 @@ Deliver:
 - Versioned WebSocket protocol.
 - Single-use connection-ticket flow or approved alternative.
 - Topic authorization, Redis limits, heartbeat, backpressure, and drain behavior.
-- Shared event distribution through the selected broker.
+- Shared event distribution through Kafka using dedicated client-facing topics.
 
 Acceptance:
 
@@ -174,10 +176,7 @@ A route is complete only when:
 
 Keep unresolved decisions as tracked architecture records rather than implicit TODOs. At minimum record the owner, deadline, options, decision, and consequences for:
 
-- Internal workload identity/mTLS mechanism.
-- User identity propagation model.
-- Event broker and WebSocket delivery semantics.
-- Production Redis topology and outage policy.
+- Service-mesh product and deployment configuration.
+- Kafka topic schemas, retention, WebSocket delivery semantics, and multi-replica fan-out.
 - Browser access/refresh token storage model.
 - Initial capacity targets and service objectives.
-
