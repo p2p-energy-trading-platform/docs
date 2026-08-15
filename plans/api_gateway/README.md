@@ -36,6 +36,7 @@ The Auth Service owns authentication and user/profile data. The gateway may expo
 | [06-api-and-reliability.md](06-api-and-reliability.md) | REST conventions, aggregation, resilience, and error contracts |
 | [07-operations-and-security.md](07-operations-and-security.md) | Configuration, observability, deployment, and security controls |
 | [08-testing-and-delivery.md](08-testing-and-delivery.md) | Test strategy, milestones, and acceptance criteria |
+| [09-folder-structure.md](09-folder-structure.md) | Recommended repository layout and dependency boundaries |
 
 ## Confirmed decisions
 
@@ -48,19 +49,21 @@ The Auth Service owns authentication and user/profile data. The gateway may expo
 - Distributed rate-limit state is stored in Redis; it is not kept only in gateway process memory.
 - The gateway can aggregate data for client-facing endpoints but does not make domain decisions.
 - The gateway does not expose public gRPC endpoints.
+- During local development, internal gRPC uses plaintext channels on the private development network. A service mesh will provide authenticated, encrypted service-to-service traffic in a later production phase.
+- The gateway propagates verified user claims to downstream services as canonical gRPC metadata. It does not forward the original access token or create an internal user token.
+- Kafka is the durable event broker for real-time events consumed by the WebSocket gateway.
 
-## Decisions still required
+## Details still to be resolved
 
-These choices should be resolved before implementation reaches the relevant milestone:
+These details are intentionally deferred until the related services or deployment environment exist:
 
-1. Whether production service identity uses application-managed mTLS, a service mesh, or platform workload identity.
-2. Whether verified user identity is propagated as the original access token or as a short-lived internal assertion. The recommendation is an audience-restricted internal assertion for sensitive deployments.
-3. Which event broker supplies real-time events to WebSocket gateway instances.
-4. The final public route catalogue and owning gRPC method for every route.
-5. Redis availability topology and route-specific behavior during a Redis outage.
-6. Initial traffic assumptions: requests per second, concurrent WebSocket connections, message rates, and response-size limits.
+1. The specific service-mesh product and deployment configuration. This does not block local plaintext gRPC development.
+2. The final public route catalogue and owning gRPC method for every route. The catalogue will grow incrementally as domain services and protobuf contracts are built.
+3. Kafka topic names, schemas, retention, WebSocket delivery semantics, and the multi-replica fan-out design.
+4. Production capacity targets. Until load tests exist, the legacy values of 100 ordinary requests per minute and 10 authentication requests per minute are provisional per-client rate-limit defaults, not total gateway capacity estimates.
+
+Redis is a mandatory gateway dependency in the current design. No local emergency limiter or fail-open mode is planned: an unavailable Redis instance makes the gateway unready, and affected requests return `503`.
 
 ## Planning rules
 
 Every public route must declare its owner, request schema, response schema, authentication policy, authorization policy, rate-limit class, timeout, idempotency behavior, and gRPC mapping. Every implementation milestone must meet the acceptance criteria in [08-testing-and-delivery.md](08-testing-and-delivery.md).
-
