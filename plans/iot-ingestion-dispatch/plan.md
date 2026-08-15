@@ -176,7 +176,7 @@ message Heartbeat {
 **Two failure tiers, handled differently:**
 
 - **Transient** (a Redis timeout, a brief DB connection blip) - usually self-resolves within seconds. Retry with bounded exponential backoff.
-- **Permanent** (malformed payload, a `device_class` value that doesn't map to anything known) - retrying produces the identical error every time. Fail immediately rather than burning through retry attempts.
+- **Permanent** (malformed payload, a `device_class` value that doesn't map to anything known, or a `grid_id` that has not been provisioned) - retrying produces the identical error every time. Fail immediately rather than burning through retry attempts.
 
 `github.com/cenkalti/backoff/v5` fits this directly via its `backoff.Permanent(err)` wrapper, which stops retrying immediately instead of exhausting attempts on an error that will never succeed:
 
@@ -218,7 +218,7 @@ CREATE TABLE iot_data.ingestion_failures (
     kafka_partition INT NOT NULL,
     kafka_offset    BIGINT NOT NULL,
     raw_payload     BYTEA NOT NULL,
-    failure_stage   TEXT NOT NULL,    -- 'decode' | 'redis_write' | 'timescale_write'
+    failure_stage   TEXT NOT NULL,    -- 'decode' | 'grid_validation' | 'redis_write' | 'timescale_write'
     error_reason    TEXT NOT NULL,
     attempt_count   INT NOT NULL,     -- passed explicitly by the caller, not a silent default (see above)
     failed_at       TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -227,6 +227,10 @@ CREATE INDEX idx_ingestion_failures_failed_at ON iot_data.ingestion_failures (fa
 ```
 
 No retention policy on this table - it's diagnostic, not telemetry. If it grows large quickly, that's a symptom worth investigating, not something to quietly auto-delete.
+
+**Grid admission rule:** after decoding either a `MeterReading` or `Heartbeat`, verify that its `grid_id` already exists in `iot_data.grids` (avoid direct querying this because it will add unnecessary load to database) before writing anything to Redis or the telemetry/registry tables. An unknown grid is a permanent provisioning error, recorded with `failure_stage = 'grid_validation'`; its raw payload is thereby quarantined for investigation or controlled manual replay, and its Kafka offset is committed only after that failure record is durable. A database error while checking the grid is transient and must not be misclassified as an unknown grid. Ingestion must never create a grid from telemetry. This prevents configuration mistakes or untrusted messages from silently expanding the system's accepted grid boundary.
+
+**NOTE**: Direct querying database while the system is reading each `MeterReading` or `Heartbeat` input is problematic. A better option is to load `iot_data.grids` during startup.
 
 **Critical rule:** commit the Kafka offset only after either all required processing succeeds or the exhausted failure is durably recorded. A malformed poison message is recorded and then committed so it cannot block the partition forever. If recording the failure itself fails, leave the offset uncommitted and retry; temporary partition backpressure is preferable to silently losing the record.
 
@@ -256,29 +260,32 @@ This section spells out the exact flow, since a heartbeat can represent either a
 
 When a `Heartbeat` message is consumed from Kafka, this service performs the following, **in order**:
 
-**Step 0 - Warm storage, defensive grid auto-create (added during final review - see section 6.4 for full reasoning):**
+**Step 0 - Warm storage, validate the provisioned grid (see section 6.4):**
 
 ```sql
-INSERT INTO iot_data.grids (grid_id, lat, lon)
-VALUES ($1, NULL, NULL)
-ON CONFLICT (grid_id) DO NOTHING;
+SELECT EXISTS (
+    SELECT 1
+    FROM iot_data.grids
+    WHERE grid_id = $1
+);
 ```
 
-This exists purely as a safety net. Grids are normally seeded in advance via migration (section 6.4) with real coordinates - this statement only ever fires if a heartbeat arrives for a `grid_id` that was never seeded, preventing the next step's foreign key from failing outright. `ON CONFLICT DO NOTHING` guarantees this never overwrites a properly-seeded grid's real coordinates with nulls.
+Continue only when the grid exists. If it does not, perform no house, asset, telemetry, or Redis writes; record the raw heartbeat in `ingestion_failures` with `failure_stage = 'grid_validation'` as described in section 3.3. Grids are administrative provisioning data and must never be discovered or created from a heartbeat.
 
 **Step 1 - Warm storage, house registry:**
 
 ```sql
+-- device_class / rated_solar_kw intentionally are not overwritten on conflict:
+-- changing them requires a deliberate administrative operation.
 INSERT INTO iot_data.houses (house_id, grid_id, device_class, rated_solar_kw, first_seen_at, last_heartbeat_at)
 VALUES ($1, $2, $3, $4, now(), now())
 ON CONFLICT (house_id) DO UPDATE SET
-    last_heartbeat_at = now();
-    -- device_class / rated_solar_kw intentionally NOT overwritten on conflict -
-    -- these are set once at first discovery; if they need to change later,
-    -- that should be a deliberate decision, not a silent overwrite on every heartbeat.
+    last_heartbeat_at = now()
+WHERE iot_data.houses.grid_id = EXCLUDED.grid_id
+RETURNING house_id;
 ```
 
-This single `INSERT ... ON CONFLICT` handles both cases in one statement: if `house_id` has never been seen before, it's inserted as a brand-new row. If it already exists, only `last_heartbeat_at` is refreshed.
+This single `INSERT ... ON CONFLICT` handles both cases in one statement: if `house_id` has never been seen before, it's inserted as a brand-new row. If it already exists in the same grid, only `last_heartbeat_at` is refreshed. No returned row means the known house was reported under a different grid; treat that as a permanent validation failure rather than silently moving it or adding it to the wrong Redis grid-membership set.
 
 **Step 2 - Warm storage, flexible asset registry (for each asset in the heartbeat's `flexible_assets` array):**
 
@@ -323,17 +330,16 @@ Within that single schema, the plan splits data into two categories: **plain tab
 
 **ER diagram:** the team member will produce this manually from the table definitions below.
 
+**NOTE**: The below schema definitions are not totally finalized yet but they serve as a starting point.
+
 ### 6.1 Plain Postgres tables (schema: `iot_data`)
 
 ```sql
--- Registry of grids. lat/lon are nullable - see section 6.4 for why: a grid
--- row can come into existence either via a curated seed migration (with real
--- coordinates) or via defensive auto-create from an unseeded heartbeat
--- (section 5, Step 0), which has no coordinates to provide yet.
+-- Registry of explicitly provisioned grids. Telemetry cannot create these rows.
 CREATE TABLE iot_data.grids (
     grid_id       TEXT PRIMARY KEY,
-    lat           DOUBLE PRECISION,
-    lon           DOUBLE PRECISION,
+    lat           DOUBLE PRECISION NOT NULL,
+    lon           DOUBLE PRECISION NOT NULL,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -444,11 +450,11 @@ go install github.com/pressly/goose/v3/cmd/goose@latest
 
 Migration files live under `internal/timescale/migrations/`, embedded via `embed.FS`, applied via `goose.Up()` programmatically on startup before the Kafka consumer starts.
 
-### 6.4 Grid provisioning - seed data and defensive fallback
+### 6.4 Grid provisioning and admission control
 
 **The gap this closes:** neither `MeterReading` nor `Heartbeat` ever carries a grid's lat/lon - it's simulator-internal config (`grids.yaml`), never published over MQTT. A smart meter reports what it measures, not where its zone's coordinates are; location is provisioning data, decided once, not telemetry.
 
-**Part 1 - seed known grids via migration**, sourced directly from the simulator's actual `config/grids.yaml`:
+**Provision known grids before starting their telemetry**, using a migration sourced directly from the simulator's actual `config/grids.yaml`:
 
 > ⚠️ **Assumption flagged explicitly:** the lat/lon values below are recalled from earlier in this planning process, not freshly re-checked against the current `config/grids.yaml`. **Pull the real, current values from that file before running this migration** - do not trust the numbers below as-is.
 
@@ -461,15 +467,19 @@ INSERT INTO iot_data.grids (grid_id, lat, lon) VALUES
 ON CONFLICT (grid_id) DO NOTHING;
 ```
 
-If a new grid is added to the simulator's config later, that's a *new* migration appending a row - never an edit to this one, same discipline as the schema migrations themselves.
+If a new grid is added to the simulator's config later, provision it in `iot_data.grids` through a new migration (or a future authenticated administrative provisioning workflow) before enabling that grid's publisher. Never edit an already-applied migration. Deployment ordering is therefore: apply the grid-provisioning change, verify the row and its coordinates, and only then start or enable telemetry for that grid.
 
-**Part 2 - defend against an unseeded grid_id showing up anyway.** Two repos, two people, a config drifting out of sync is a realistic failure mode. `houses.grid_id REFERENCES grids.grid_id` means a heartbeat for a grid nobody seeded would otherwise fail the whole house upsert with a foreign key violation. Section 5's Step 0 handles this - a defensive `INSERT ... ON CONFLICT DO NOTHING` with `NULL` coordinates, run immediately before the house upsert. This is why `grids.lat`/`grids.lon` are nullable in section 6.1 - there are legitimately two ways a grid row is created (curated seed with known coordinates, or auto-discovered via heartbeat with none yet), and `ON CONFLICT DO NOTHING` guarantees the defensive path never clobbers a properly-seeded row.
+**Unknown grids are rejected, not auto-created.** Configuration drift between repositories is a realistic failure mode, but accepting it would turn a typo or untrusted message into a new administrative entity with incomplete metadata. Both meter-reading and heartbeat handlers therefore check `iot_data.grids` before any warm- or hot-storage write. An unknown `grid_id` follows section 3.3's permanent-failure path with `failure_stage = 'grid_validation'`. The durable failure row preserves the original payload for investigation and controlled manual replay after provisioning, while preventing the bad record from blocking its Kafka partition indefinitely.
 
-**Side benefit:** a grid row sitting with `lat IS NULL` becomes a visible, queryable "someone forgot to provision this" signal instead of a crash:
+Provisioning can be verified before enabling telemetry:
 
 ```sql
-SELECT grid_id FROM iot_data.grids WHERE lat IS NULL;
+SELECT grid_id, lat, lon
+FROM iot_data.grids
+WHERE grid_id = $1;
 ```
+
+The query must return exactly one row with the expected coordinates. `lat` and `lon` are `NOT NULL`, so partially provisioned placeholder grids cannot be admitted.
 
 ---
 
@@ -520,11 +530,11 @@ The IoT Simulator already has the receiving end of this built and tested - this 
 
 Four tiers, mirroring the IoT Simulator's own testing discipline (161 tests, CI-enforced) adapted for a service whose real dependencies are Kafka/Redis/Postgres rather than pure computation.
 
-**Tier 1 - Unit tests.** No containers, no network, milliseconds each. Table-driven, using `testify/require`. For the current ingestion path, covers JSON→domain mapping for every `device_class`/`asset_type` value plus at least one invalid one, the missing-`storage_assets` case, and the transient-vs-permanent error classifier from section 3.3. Protobuf/domain mapping tests belong to the future internal gRPC boundary when that interface is implemented.
+**Tier 1 - Unit tests.** No containers, no network, milliseconds each. Table-driven, using `testify/require`. For the current ingestion path, covers JSON→domain mapping for every `device_class`/`asset_type` value plus at least one invalid one, the missing-`storage_assets` case, and the transient-vs-permanent error classifier from section 3.3, including unknown grids as permanent validation failures. Protobuf/domain mapping tests belong to the future internal gRPC boundary when that interface is implemented.
 
-**Tier 2 - Mocked-dependency tests.** Still no containers - these test *control flow*, not whether Redis/Postgres itself behaves correctly. Define narrow interfaces (`HotStore`, `WarmStore`) that real clients implement in production and fakes implement in tests. Answers questions like: if the Redis write fails, does TimescaleDB still get attempted? Does a permanent decode error skip straight to `ingestion_failures` without touching either store? Does the offset stay uncommitted until both writes succeed?
+**Tier 2 - Mocked-dependency tests.** Still no containers - these test *control flow*, not whether Redis/Postgres itself behaves correctly. Define narrow interfaces (`HotStore`, `WarmStore`) that real clients implement in production and fakes implement in tests. Answers questions like: if the Redis write fails, does TimescaleDB still get attempted? Does an unknown grid skip all registry, telemetry, and Redis writes and go straight to `ingestion_failures`? Does the offset remain uncommitted until either normal processing succeeds or the failure is durably recorded?
 
-**Tier 3 - Integration tests via `testcontainers-go`.** Real, ephemeral containers spun up per test run: `testcontainers-go/modules/kafka` (KRaft-mode), `testcontainers-go/modules/postgres` (works against a `timescale/timescaledb` image too, since it's still Postgres underneath), `testcontainers-go/modules/redis`. Answers: do goose migrations apply clean on a fresh schema? Is the `meter_readings` upsert genuinely idempotent (write the same `house_id`/`time`/`seq` twice, assert exactly one row)? Does a second heartbeat for a known house update only `last_heartbeat_at`, not `device_class`? Does the grid auto-create path from section 6.4 actually work?
+**Tier 3 - Integration tests via `testcontainers-go`.** Real, ephemeral containers spun up per test run: `testcontainers-go/modules/kafka` (KRaft-mode), `testcontainers-go/modules/postgres` (works against a `timescale/timescaledb` image too, since it's still Postgres underneath), `testcontainers-go/modules/redis`. Answers: do goose migrations apply clean on a fresh schema? Is the `meter_readings` upsert genuinely idempotent (write the same `house_id`/`time`/`seq` twice, assert exactly one row)? Does a second heartbeat for a known house update only `last_heartbeat_at`, not `device_class`? Are unknown-grid meter readings and heartbeats quarantined without creating a grid or writing to Redis? Is a known house rejected if a heartbeat reports it under a different grid?
 
 **Tier 4 - Manual, one-time, end-to-end.** Real simulator, real Kafka Connect, real this-service, actually pointed at each other. This is where section 13's still-open live-verification item gets closed for good - no amount of testcontainers substitutes for checking the actual seam between this service and the real upstream pipeline.
 
@@ -547,6 +557,8 @@ iot-ingestion/
 │   ├── kafka/
 │   │   ├── consumer.go          # single consumer group, both topics, dispatch by topic name (section 3)
 │   │   └── decode.go            # JSON wire structs, validation, and JSON→domain mapping (section 3.1)
+│   ├── admission/
+│   │   └── grid.go              # shared pre-provisioned-grid check for both message types (sections 3.3 and 6.4)
 │   ├── redis/
 │   │   ├── client.go            # hot storage writes/reads (section 4)
 │   │   └── keys.go              # builders for meter latest-state, house status, and grid membership keys
@@ -556,7 +568,7 @@ iot-ingestion/
 │   │   ├── writer.go            # writes meter_readings / storage_asset_readings / registry tables
 │   │   └── failures.go          # writes to ingestion_failures (section 3.3)
 │   ├── heartbeat/
-│   │   └── processor.go         # device discovery flow, incl. Step 0 grid auto-create - section 5
+│   │   └── processor.go         # device discovery within pre-provisioned grids (section 5)
 │   ├── models/
 │   │   └── domain.go            # this service's own internal domain structs (NOT go-sdk proto types - see section 3.1)
 │   ├── health/
@@ -604,7 +616,7 @@ Kafka topic names, broker addresses, and the consumer-group name remain runtime 
 
 **Resolved during final pre-development review (this pass):**
 
-- ~~Grid lat/lon has no data source~~ - resolved via seed migration + defensive auto-create fallback (section 6.4)
+- ~~Grid lat/lon has no data source~~ - resolved via explicit provisioning migrations; unknown-grid telemetry is quarantined and never creates grids (sections 3.3 and 6.4)
 - ~~Dead-letter / poison-message strategy~~ - resolved: two-tier retry via `cenkalti/backoff/v5` + `ingestion_failures` table (section 3.3)
 - ~~Testing strategy~~ - resolved: four-tier plan (section 10)
 - ~~Kafka client library~~ - resolved: `franz-go` (section 9)
