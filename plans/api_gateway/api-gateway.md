@@ -204,12 +204,7 @@ gRPC Server shuts down gracefully
 
 The gateway maintains gRPC client connections to downstream services:
 
-| Service | Address | Purpose |
-|---|---|---|
-| Matching Engine | `localhost:50051` | Order matching and recovery |
-| Order Service | `localhost:50052` | Order management |
-| Auth Service | `localhost:50053` | Token validation |
-| Notification Service | `localhost:50054` | Event notifications |
+**NOTE**: Port numbers have not been decided
 
 > **Note:** Proto file bindings will be wired in once `.proto` files are finalized in the `protobuf` repository under `proto/gridx/`.
 

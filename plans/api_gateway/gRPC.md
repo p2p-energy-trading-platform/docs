@@ -1,5 +1,5 @@
 ---
-connie-title: gRPC
+connie-title: gRPC for API Gateway
 ---
 
 # GridX - API Gateway gRPC Documentation
@@ -83,6 +83,8 @@ The API Gateway does not contain business logic. It forwards requests to the res
  | :50055      |   | :50056      |   | :50057      |
  +-------------+   +-------------+   +-------------+
 ```
+
+**NOTE**: The above services and ports are just examples for now
 
 ---
 
@@ -231,21 +233,7 @@ Benefits:
 
 ---
 
-# 7. Configured Services
-
-| Service | Address | Purpose |
-|-|-|-|
-| Matching Engine | localhost:50051 | Order matching |
-| Order Service | localhost:50052 | Order lifecycle |
-| Auth Service | localhost:50053 | Authentication |
-| Notification Service | localhost:50054 | User notifications |
-| Trade Service | localhost:50055 | Trade management |
-| Wallet Service | localhost:50056 | Wallet transactions |
-| Device Service | localhost:50057 | IoT device communication |
-
----
-
-# 8. Protocol Buffer Integration
+# 7. Protocol Buffer Integration
 
 GridX maintains protobuf contracts in a separate repository.
 
@@ -287,7 +275,7 @@ GridX Services
 
 ---
 
-# 9. TypeScript SDK Integration
+# 8. TypeScript SDK Integration
 
 The API Gateway will consume the generated TypeScript SDK.
 
@@ -326,43 +314,7 @@ Actual generated clients will be connected after protobuf services are finalized
 
 ---
 
-# 10. Go SDK Integration
-
-Repository:
-
-```text
-go-sdk
-```
-
-The Go SDK is intended for Go-based GridX backend services.
-
-Potential consumers:
-
-- Matching Engine
-- Trading Engine
-- AI Forecast Service
-
-Generation flow:
-
-```text
-protobuf
-   |
-buf generate
-   |
-go-sdk
-   |
-backend services
-```
-
-Benefits:
-
-- Shared contracts
-- Strong typing
-- Reduced manual API integration
-
----
-
-# 11. Connection Management
+# 9. Connection Management
 
 The gRPC client uses keepalive configuration.
 
@@ -384,32 +336,7 @@ Purpose:
 
 ---
 
-# 12. Current Implementation Status
-
-| Feature | Status |
-|-|-|
-| gRPC dependency setup | Completed |
-| gRPC configuration layer | Completed |
-| Service URL management | Completed |
-| Keepalive configuration | Completed |
-| gRPC client structure | Completed |
-| Generated SDK integration | Pending |
-| Proto service bindings | Pending |
-| REST to gRPC mapping | Pending |
-
----
-
-# 13. Future Improvements
-
-## Generated Client Integration
-
-Replace temporary clients with generated SDK clients.
-
-Example:
-
-```typescript
-orderClient.createOrder()
-```
+# 10. Future Improvements
 
 ## gRPC Error Handling
 
@@ -430,22 +357,3 @@ Production improvements:
 - TLS encryption
 - Service authentication
 - Certificate management
-
----
-
-# Summary
-
-The GridX API Gateway now contains the foundation required for gRPC-based microservice communication.
-
-Implemented:
-
-- gRPC client configuration
-- Service endpoint management
-- SDK preparation
-- Protobuf integration workflow
-
-Pending:
-
-- Final protobuf contracts
-- Generated SDK installation
-- Actual service RPC implementation
