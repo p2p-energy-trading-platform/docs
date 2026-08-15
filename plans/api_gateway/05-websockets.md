@@ -81,7 +81,20 @@ Define and test:
 
 ## Event delivery and scaling
 
-Gateway instances need a shared event distribution mechanism when horizontally scaled. The final broker is an open decision.
+Kafka is the durable event broker for real-time events. The gateway consumes dedicated, versioned client-facing topics rather than publishing raw internal order, trade, wallet, or IoT records directly to WebSocket clients.
+
+Example topic separation:
+
+```text
+Internal domain topics               Client-facing topics
+orders.events.v1          ->         realtime.user-events.v1
+trades.events.v1          ->         realtime.market-summary.v1
+meter.readings.v1         ->         realtime.device-status.v1
+```
+
+The owning service or an event-projection component creates a safe client-facing event. That event should include an event ID, schema version, timestamp, routing key such as user/device ID, event type, and client-safe payload. This prevents the public WebSocket contract from becoming coupled to high-volume or sensitive internal schemas.
+
+Initial local development assumes one gateway instance consuming Kafka. When the gateway is horizontally scaled, the design must account for Kafka delivering a record to only one consumer within a consumer group even though the relevant WebSocket may be connected to another replica. Acceptable later designs include a unique consumer group per gateway instance for modest curated traffic, or a dedicated real-time router that consumes Kafka and fans events out to the correct gateway instances. Redis Streams will not be introduced as a second durable event broker without a separate demonstrated requirement.
 
 The design must state:
 
@@ -116,4 +129,3 @@ Measure active connections, connection attempts, authentication failures, close 
 - Slow consumer is disconnected without unbounded memory growth.
 - Revoked session is disconnected according to policy.
 - Instance shutdown drains or closes connections predictably and clients reconnect safely.
-
