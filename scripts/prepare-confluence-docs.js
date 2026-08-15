@@ -50,6 +50,12 @@ const mermaidBlockRegex = /```mermaid\s*\n([\s\S]*?)```/g;
 // Loop through each markdown files and
 // replace mermaid markdown blocks with images
 for (const file of markdownFiles) {
+
+    if (!fs.existsSync(file)) {
+        console.warn(`Skipping missing file: ${file}`);
+        continue;
+    }
+    
     const original = fs.readFileSync(file, "utf8");
     let changed = false;
     let index = 0;
