@@ -1,5 +1,5 @@
 ---
-connie-title: API Gateway [LEGACY DOC]
+connie-title: API Gateway - LEGACY DOC
 ---
 
 # Legacy Doc
