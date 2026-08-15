@@ -15,7 +15,7 @@ Configuration groups should cover:
 - Auth issuer, audience, JWKS URI, algorithms, caches, and timeouts.
 - Redis endpoint, TLS, credentials, pool, timeouts, and fallback modes.
 - gRPC targets, TLS trust, workload identity, deadlines, and message sizes.
-- WebSocket limits, heartbeat, drain time, and event-broker settings.
+- WebSocket limits, heartbeat, drain time, and Kafka broker/topic settings.
 - Logging, tracing, metrics, sampling, and environment identity.
 
 ## HTTP edge security
@@ -98,7 +98,7 @@ Before production, define measurable objectives for:
 - REST availability and latency by route class.
 - WebSocket connection success and event-delivery latency.
 - Maximum error-rate and timeout budgets.
-- Redis and broker dependency expectations.
+- Redis and Kafka dependency expectations.
 
 Create alerts tied to user-impacting symptoms and control degradation. Each high-severity alert needs a short runbook covering diagnosis, safe mitigation, rollback, and escalation.
 
@@ -114,4 +114,3 @@ Create alerts tied to user-impacting symptoms and control degradation. Each high
 ## Data and privacy
 
 The gateway should minimize collected and retained personal data. Define log retention, audit retention, access control, encryption at rest, and deletion requirements with the platform's privacy policy. Gateway caches, if introduced, must be partitioned by authorization context and must not leak one user's response to another.
-
