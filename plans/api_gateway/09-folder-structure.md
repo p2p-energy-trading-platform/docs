@@ -344,4 +344,3 @@ Transport code must not import feature handlers. Common infrastructure must not 
 ## When to split further
 
 Do not introduce a monorepo, internal package collection, or separate WebSocket repository initially. Consider splitting only when independently deployable scaling or ownership is demonstrated—for example, if WebSocket fan-out needs a very different replica count and lifecycle from REST traffic.
-

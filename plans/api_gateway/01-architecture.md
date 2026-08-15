@@ -112,4 +112,3 @@ The health endpoints are outside the versioned API:
 - `GET /health/ready`: the instance is ready to receive traffic.
 
 Readiness must not require every downstream domain service to be healthy. It should represent whether the gateway can safely accept traffic and should report dependency detail only to trusted operators.
-

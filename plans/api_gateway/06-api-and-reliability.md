@@ -142,4 +142,3 @@ Shutdown:
 - Breaking REST or WebSocket changes require a new public version and migration window.
 - Removing or changing fields requires documented deprecation.
 - Internal protobuf and public API versions evolve independently through explicit mappers.
-
