@@ -90,13 +90,12 @@ WebSocket upgrades can return HTTP `429`. For established connections, define a 
 
 ## Redis failure policy
 
-A single global fail-open/fail-closed choice is inappropriate.
+Redis is a mandatory gateway dependency in the current architecture. The gateway does not implement a local emergency limiter or fail-open mode.
 
-- Sensitive authentication routes should fail closed or use a deliberately small, bounded emergency allowance.
-- Financial/trading mutations should use a conservative policy agreed with domain owners.
-- Ordinary reads may temporarily use a local emergency limiter to preserve partial availability.
-- Any fallback must be bounded in duration and capacity.
-- Redis errors and fallback activation must alert operators.
+- If Redis is unavailable during startup, the gateway does not become ready.
+- If Redis becomes unavailable while running, readiness fails and requests that require rate-limit enforcement return `503 Service Unavailable`.
+- The gateway must not process sensitive authentication, financial, or trading operations without the Redis-backed control.
+- Redis failures must be logged, measured, and surfaced to operators.
 
 The Auth Service must independently rate-limit credential, MFA, refresh, and password-recovery operations. Gateway controls are defense in depth, not the Auth Service's only protection.
 
@@ -105,8 +104,8 @@ The Auth Service must independently rate-limit credential, MFA, refresh, and pas
 - Redis connections use TLS and authentication in production.
 - Credentials are stored through the platform secret mechanism.
 - Timeouts are short and do not consume the entire request budget.
-- Connection-pool saturation, command latency, errors, allowed requests, denied requests, and fallback use are measured.
-- Redis topology, failover, persistence expectations, and maintenance behavior are documented by the deployment plan.
+- Connection-pool saturation, command latency, errors, allowed requests, denied requests, and readiness failures are measured.
+- Advanced Redis failover and fallback designs are outside the initial local-development scope.
 
 ## Required tests
 
@@ -114,8 +113,7 @@ The Auth Service must independently rate-limit credential, MFA, refresh, and pas
 - Correct TTL and reset behavior.
 - Layered IP and user limits.
 - Trusted-proxy and spoofed-forwarded-header behavior.
-- Redis timeout/disconnection fallback for each route class.
+- Redis timeout/disconnection causes unready status and the documented `503` response.
 - IPv6 normalization.
 - WebSocket connection and message limits.
 - Bounded key cardinality and memory under adversarial inputs.
-
