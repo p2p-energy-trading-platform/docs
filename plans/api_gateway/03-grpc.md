@@ -33,14 +33,21 @@ Keepalive values must be agreed with infrastructure and server owners. Aggressiv
 
 ## Transport and service authentication
 
-Production gRPC uses TLS. Prefer mutual TLS or platform workload identity so that:
+The implementation is phased:
+
+- Local development initially uses plaintext gRPC channels on the private development/container network.
+- The client-creation code must centralize channel credentials so transport security can change without altering routes, mappers, or domain clients.
+- A later production phase introduces a service mesh for mTLS/workload identity and service authorization.
+- Plaintext must not remain enabled in an untrusted or production network.
+
+With the service mesh in place:
 
 - The gateway verifies the downstream service identity.
 - The downstream service verifies the gateway workload identity.
 - Traffic is encrypted in transit.
 - Authorization can restrict RPC callers by service identity.
 
-Certificate/trust configuration must cover issuance, storage, renewal, rotation, expiry monitoring, and revocation. Local development may use a documented local CA or an explicitly development-only insecure channel. Production must fail fast rather than silently fall back to plaintext.
+The mesh should own certificate issuance, storage, renewal, rotation, expiry monitoring, and trust distribution. Application repositories should not implement their own production certificate-rotation system. Production must fail fast rather than silently fall back to plaintext.
 
 The official [gRPC authentication guide](https://grpc.io/docs/guides/auth/) describes TLS channel credentials, optional mutual authentication, and metadata-based call credentials.
 
@@ -53,10 +60,13 @@ Standard internal metadata should include:
 ```text
 x-request-id
 traceparent
-authorization or x-gridx-user-assertion  # selected trust model only
+x-gridx-user-id
+x-gridx-user-scopes
+x-gridx-user-roles       # when required
+x-gridx-tenant-id        # if tenancy is introduced
 ```
 
-Do not forward arbitrary inbound metadata. Use an allowlist and overwrite reserved identity fields.
+The gateway creates this metadata from verified access-token claims. It does not forward the original access token or mint an internal assertion. Do not forward arbitrary inbound metadata: use an allowlist and overwrite reserved identity fields. Downstream services may trust this metadata in production only when mesh identity and authorization policy prove that the RPC caller is the gateway.
 
 ## Deadlines and cancellation
 
@@ -129,4 +139,3 @@ Retry policy:
 Idempotency policy:
 Error mapping exceptions:
 ```
-

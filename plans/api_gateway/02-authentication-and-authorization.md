@@ -118,14 +118,22 @@ Avoid a mandatory Auth Service call for every normal request unless immediate re
 
 ## Internal identity propagation
 
-After successful verification, the gateway sends only required identity context to downstream services. The trust boundary must be explicit.
+After successful verification, the gateway sends only required identity context to downstream services as canonical gRPC metadata. This is the selected identity-propagation model; the original access token is not forwarded, and the gateway does not create a separate internal assertion.
 
-Recommended production model:
+The metadata contains only the claims required by the target RPC, for example:
 
-1. Authenticate the gateway workload to downstream services using mTLS or equivalent workload identity.
-2. Create a short-lived internal assertion with a target-service audience, or use protected metadata whose source is guaranteed by the authenticated channel.
-3. Include subject, required scopes, tenant if applicable, correlation ID, and trace context.
-4. Downstream services accept trusted identity metadata only from authenticated gateway workloads.
+```text
+x-gridx-user-id
+x-gridx-user-scopes
+x-gridx-user-roles       # only when required
+x-gridx-tenant-id        # only if tenancy is introduced
+x-request-id
+traceparent
+```
+
+The gateway derives these values only from the successfully verified access token and its own request context. Downstream services use the subject and permissions for resource-level authorization and domain decisions.
+
+This model relies on the service channel establishing that the caller really is the gateway. During local plaintext development, downstream gRPC ports must remain reachable only inside the private development network and the metadata must be treated as development-only trust. Before any untrusted or production network is used, the planned service mesh must provide mTLS/workload identity and authorization policies allowing only the gateway workload to call client-facing RPCs.
 
 Never forward client-provided identity headers as trusted values. Remove them at ingress and generate canonical internal metadata after verification.
 
@@ -158,4 +166,3 @@ The Auth Service additionally needs a protected private key reference, current `
 
 - [RFC 8725: JSON Web Token Best Current Practices](https://www.rfc-editor.org/rfc/rfc8725.html)
 - [Fastify JWT documentation](https://github.com/fastify/fastify-jwt)
-
