@@ -604,6 +604,8 @@ iot-ingestion/
 ├── grpc/                        # placeholder for future gRPC service, using go-sdk types
 ├── config/
 │   └── config.yaml              # Kafka/Redis/DB/topics + grid_registry_refresh_interval
+├── .env.example
+├── .env
 └── README.md
 ```
 
