@@ -40,6 +40,15 @@ jobs:
         run: |
           node scripts/prepare-confluence-docs.js
 
+      - name: Verify Confluence access
+        env:
+          ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
+        run: |
+          curl --silent --show-error --fail-with-body \
+            --user "vidurshan145@gmail.com:${ATLASSIAN_API_TOKEN}" \
+            --header "Accept: application/json" \
+            "https://vidurshan145.atlassian.net/wiki/rest/api/content/5472427?expand=space"
+
       - name: Publish Markdown Docs to Confluence
         uses: markdown-confluence/publish-action@v5
         env:
