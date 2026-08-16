@@ -6,7 +6,7 @@ connie-title: API Gateway - Folder structure
 
 ## Assessment of the legacy structure
 
-The structure in `api-gateway.md` is adequate for a small proof of concept, but it is not enough for the planned gateway. In particular, it does not clearly separate:
+The previous structure is adequate for a small proof of concept, but it is not enough for the planned gateway. In particular, it does not clearly separate:
 
 - Fastify infrastructure from public API features.
 - Route definitions from orchestration logic.
