@@ -76,32 +76,6 @@ Aggregators must not reproduce domain rules. They compose already-authorized res
 
 No inbound gRPC server is planned for the gateway. Internal services should publish events through the selected event infrastructure or expose their own APIs. An inbound gateway gRPC server may be added only after documenting a concrete caller, RPC contract, authentication method, authorization policy, and operational need.
 
-## Proposed repository shape
-
-```text
-src/
-├── app.ts
-├── main.ts
-├── config/
-├── plugins/
-│   ├── authentication.ts
-│   ├── authorization.ts
-│   ├── grpc-clients.ts
-│   ├── observability.ts
-│   ├── rate-limit.ts
-│   └── websocket.ts
-├── routes/
-│   └── v1/
-├── clients/
-├── policies/
-├── mappers/
-├── errors/
-├── websocket/
-└── types/
-```
-
-Route handlers should remain thin. gRPC invocation, mapping, policy, and transport concerns should be isolated so they can be tested independently.
-
 ## Public API version
 
 The canonical prefix is `/api/v1`. Production and local deployments use the same path structure. Hostnames differ by environment; paths do not.
