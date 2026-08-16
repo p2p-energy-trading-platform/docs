@@ -1,55 +1,118 @@
 ---
-connie-title: IoT Ingestion - Folder Structure
+connie-title: IoT Ingestion - Repository Structure
 ---
 
+# Validated repository structure
 
-# Repository structure (proposed)
-
-**Note on `internal/health/` below:** `/healthz` provides basic process liveness to match the other services in `gridx-infra`. `/readyz` is now required by the startup-bootstrap design, it must remain false until the initial grid registry has loaded and Kafka consumption is safe to start.
+The service remains one Go module and one deployable process. Package boundaries follow capabilities and dependency direction; they are not separate microservices. Do not create empty placeholder packages.
 
 ```text
 iot-ingestion/
-├── go.mod                          # depends on github.com/p2p-energy-trading-platform/go-sdk
-├── go.sum
 ├── cmd/
-│   └── ingestion/
-│       └── main.go              # migrations → grid bootstrap/refresher → Kafka consumer (sections 6.5-6.6)
+│   ├── iot-ingestion/
+│   │   └── main.go                   # parse config, build app, handle signals
+│   └── migrate/
+│       └── main.go                   # single-owner migration command/job
 ├── internal/
-│   ├── kafka/
-│   │   ├── consumer.go          # single consumer group, both topics, dispatch by topic name (section 3)
-│   │   └── decode.go            # JSON wire structs, validation, and JSON→domain mapping (section 3.1)
+│   ├── app/
+│   │   ├── app.go                    # dependency wiring and lifecycle
+│   │   └── shutdown.go               # readiness off, drain, bounded stop
+│   ├── config/
+│   │   ├── config.go                 # typed runtime configuration
+│   │   └── validate.go               # fail-fast cross-field validation
+│   ├── domain/
+│   │   ├── telemetry.go              # internal domain types and invariants
+│   │   ├── heartbeat.go
+│   │   └── errors.go                 # typed domain/application errors
+│   ├── ingestion/
+│   │   ├── consumer.go               # poll loop, partition workers, commits
+│   │   ├── router.go                 # strict topic-to-handler routing
+│   │   ├── decoder.go                # private JSON wire structs to domain
+│   │   ├── meter_handler.go          # ordered meter workflow
+│   │   ├── heartbeat_handler.go      # ordered heartbeat workflow
+│   │   ├── retry.go                  # transient/permanent policy
+│   │   └── failure_recorder.go       # failure application port
 │   ├── admission/
-│   │   ├── registry.go          # immutable snapshot and O(1) grid admission lookup
-│   │   ├── postgres_loader.go   # loads complete grid snapshots from iot_data.grids
-│   │   └── refresher.go         # startup bootstrap and periodic atomic refresh (sections 6.5-6.6)
-│   ├── redis/
-│   │   ├── client.go            # hot storage writes/reads (section 4)
-│   │   └── keys.go              # builders for meter latest-state, house status, and grid membership keys
-│   ├── timescale/
-│   │   ├── client.go            # DB connection setup
-│   │   ├── migrations/          # goose migration files, embedded via embed.FS (section 6.3), incl. grid seed (section 6.4)
-│   │   ├── writer.go            # writes meter_readings / storage_asset_readings / registry tables
-│   │   └── failures.go          # writes to ingestion_failures (section 3.3)
-│   ├── heartbeat/
-│   │   └── processor.go         # device discovery within pre-provisioned grids (section 5)
-│   ├── models/
-│   │   └── domain.go            # this service's own internal domain structs (NOT go-sdk proto types - see section 3.1)
-│   ├── health/
-│   │   ├── handler.go           # minimal /healthz liveness endpoint
-│   │   └── readiness.go         # /readyz stays false until grid bootstrap succeeds
-│   └── dispatch/                # placeholder package, not implemented yet
+│   │   ├── registry.go               # immutable in-memory snapshot
+│   │   └── refresher.go              # bootstrap and atomic refresh
+│   ├── query/
+│   │   ├── service.go                # storage-neutral query use cases
+│   │   └── pagination.go             # opaque keyset-token logic
+│   ├── store/
+│   │   ├── postgres/
+│   │   │   ├── pool.go
+│   │   │   ├── telemetry_writer.go
+│   │   │   ├── heartbeat_writer.go
+│   │   │   ├── query_repository.go
+│   │   │   ├── grid_loader.go
+│   │   │   └── failures.go
+│   │   └── redis/
+│   │       ├── client.go
+│   │       ├── latest.go
+│   │       ├── heartbeat.go
+│   │       ├── keys.go
+│   │       └── scripts/
+│   │           ├── set_latest_if_newer.lua
+│   │           └── update_heartbeat.lua
+│   ├── transport/
+│   │   ├── grpc/
+│   │   │   ├── server.go             # options, registration, lifecycle
+│   │   │   ├── telemetry_handler.go  # generated API to query service
+│   │   │   ├── mapper.go
+│   │   │   ├── errors.go             # typed errors to gRPC status
+│   │   │   └── interceptors.go
+│   │   └── httphealth/
+│   │       └── server.go             # /healthz, /readyz only
+│   └── observability/
+│       ├── logging.go
+│       ├── metrics.go
+│       └── tracing.go
+├── migrations/
+│   ├── embed.go                      # embed.FS exposed to migrate command
+│   └── 00001_initial_schema.sql
 ├── test/
-│   └── integration/             # testcontainers-go tests (section 10, Tier 3)
-├── grpc/                        # placeholder for future gRPC service, using go-sdk types
-├── config/
-│   └── config.yaml              # Kafka/Redis/DB/topics + grid_registry_refresh_interval
-├── .env.example
-├── .env
+│   ├── integration/                  # real Kafka/Redis/TimescaleDB
+│   ├── contract/                     # generated-client interoperability
+│   ├── endtoend/                     # simulator -> query API smoke path
+│   ├── load/                         # reproducible ingest/query scenarios
+│   ├── fixtures/
+│   └── helpers/
+├── docs/
+│   └── runbooks/
+│       ├── consumer-lag.md
+│       ├── dependency-outage.md
+│       ├── failure-replay.md
+│       └── redis-rebuild.md
+├── .github/workflows/ci.yml
+├── .dockerignore
+├── .env.example                      # names and safe examples, no secrets
+├── .gitignore                        # must exclude .env and local credentials
+├── Dockerfile                        # pinned multi-stage, non-root runtime
+├── docker-compose.yaml               # local development only
+├── Taskfile.yml
+├── go.mod
+├── go.sum
 └── README.md
 ```
 
-`internal/redis/keys.go` is the single source of truth for Redis key formats. It exposes functions that build keys from domain identifiers, so callers never construct strings such as `meter:{grid_id}:{house_id}:latest` themselves. Keeping these builders beside the Redis client makes their ownership clear.
+## Boundary rules
 
-`internal/admission/registry.go` is the single admission path shared by meter-reading and heartbeat handlers. `postgres_loader.go` owns the only query that loads `iot_data.grids`, while `refresher.go` controls initial bootstrap, the refresh ticker, validation, and atomic snapshot replacement. Keeping those responsibilities separate makes it straightforward to test that high-volume handlers never call Postgres directly.
+- `cmd` contains composition only. Business workflows are testable without starting listeners.
+- `domain` imports no Kafka, Redis, Postgres, gRPC, or generated protobuf package.
+- `ingestion` owns delivery/order behavior and depends on narrow store/admission interfaces defined by the consuming package. Kafka-specific records do not leak into handlers.
+- `query` owns pagination and query rules. gRPC handlers only validate/map/authorize and delegate.
+- `store` contains dependency adapters. SQL is colocated with the repository that executes it; Redis key construction exists only in `store/redis/keys.go`.
+- `transport/grpc` imports SDK-generated types and maps them to/from domain types. There is no top-level placeholder `grpc/` directory.
+- `migrations` is top-level because schema artifacts are operational assets shared by the migration command and CI. Production application replicas do not race to apply migrations.
+- `.env` is never committed. Secrets arrive through the deployment secret mechanism; config supports environment variables and may use a non-secret local YAML file if needed.
+- Dispatch, MQTT publishing, and cold-storage packages are absent because those capabilities are out of scope.
 
-Kafka topic names, broker addresses, the consumer-group name remain runtime configuration in `config/config.yaml`. A Kafka record key is different from both a topic name and a Redis key: producers attach it to a record to influence partitioning and per-key ordering. This ingestion service only consumes records created by the MQTT Source Connector, so it does not need a `kafka_keys.go` file unless it later starts producing Kafka records or explicitly validating incoming record keys.
+## Interfaces to define early
+
+Keep interfaces narrow and consumer-owned. Expected seams are `TelemetryWriter`, `HeartbeatWriter`, `FailureRecorder`, `HotProjection`, `GridRegistry`, and read-only query repositories. Do not create a generic repository or a large `utils`/`common` package.
+
+The gRPC contract itself remains in the separate protobuf repository. This repository consumes a pinned `go-sdk` release. If local contract development is needed, use a temporary Go workspace/replace directive that is never committed.
+
+## Build and release requirements
+
+CI runs formatting, vet/static analysis, unit tests with the race detector, migration tests, integration/contract tests, vulnerability and dependency checks, and the container build. The image uses a pinned Go builder and minimal non-root runtime, includes CA certificates/time-zone data only if needed, exposes separate gRPC and health ports, and records version/commit metadata. Release artifacts and dependencies must be reproducible and version-pinned.
