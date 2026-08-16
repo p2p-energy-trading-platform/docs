@@ -5,12 +5,12 @@ connie-title: IoT Ingestion - Kafka Consumption
 
 # Kafka consumption
 
-- This service runs as a **single Kafka consumer group**, subscribed to both `iot.meter-readings` and `iot.heartbeats`, dispatching each record to the correct handler based on which topic it arrived on.
-- **Why one group, not two:** ordering isn't a factor either way - Kafka only orders within a partition, and the two message types already live on physically separate topics regardless of grouping, so there's no ordering guarantee to gain by splitting further. The real reason to split would be independent *scaling* of the much-higher-volume meter-reading stream away from heartbeat processing - at this project's scale, a single Go process handles both comfortably, and goroutines make "two topics, one process" close to free. Simpler to run and deploy while already juggling Kafka, Redis, TimescaleDB, and goose in one service.
-- **One real risk worth designing around regardless of grouping:** a Go process dies on an unrecovered panic. A bug in heartbeat processing shouldn't be able to take down meter-reading processing just because they share a process. Handlers return ordinary errors (feeding into the failure-recording path in section 3.3) rather than panicking - this sidesteps the risk entirely as long as that discipline is maintained.
-- **Partitioning / ordering:** ordering is required independently within each stream: all meter readings for one house must remain ordered within `iot.meter-readings`, and all heartbeats for one house must remain ordered within `iot.heartbeats`. Kafka does **not** provide ordering across the two topics, so the service must not rely on a meter reading and heartbeat having a defined order relative to each other. **Likely already satisfied within each topic:** Confluent's MQTT Source Connector documentation describes using the source MQTT topic string as the Kafka record key by default. Because each house has a unique MQTT meter topic and heartbeat topic, this should consistently partition that house's records within the corresponding Kafka topic. Treat this as *likely*, not confirmed, until the keys and partitions are inspected against live traffic (section 13).
+- This service runs as a **single Kafka consumer group**, subscribed to both `iot.meter-readings` and `iot.heartbeats`, dispatching each record to the correct handler based on which topic it arrived on. The group ID is stable per environment and is never shared with a different logical application.
+- **Why one group initially:** ordering is per partition, and the message types are already on separate topics. One group/process is operationally simple. This is conditional on capacity tests: if high-volume readings delay heartbeat SLOs or the streams need independent scaling/release behavior, use two consumer clients/groups (each subscribed to one topic) or separate deployments of the same codebase. Do not claim one process is sufficient before the workload model is measured.
+- **One real risk worth designing around regardless of grouping:** a Go process dies on an unrecovered panic. Handlers return ordinary errors into the failure-recording path; worker and gRPC recovery boundaries still contain unexpected panics and emit alerts.
+- **Partitioning / ordering:** ordering is required independently within each stream: all meter readings for one house must remain ordered within `iot.meter-readings`, and all heartbeats for one house must remain ordered within `iot.heartbeats`. Kafka does **not** provide ordering across the two topics. The connector is expected to use a stable source-topic key, but this remains unconfirmed until keys and partitions are inspected against live traffic in the end-to-end tests.
 
-## Message format - JSON ingestion and future protobuf contracts
+## Message format - JSON ingestion and protobuf API contracts
 
 The ingestion wire format is settled. The IoT Simulator serializes meter readings and heartbeats as JSON and publishes them to the MQTT broker. The MQTT Source Connector then forwards the MQTT payload bytes unchanged into Kafka; there is no JSON-to-protobuf conversion anywhere in this path:
 
@@ -21,7 +21,7 @@ IoT Simulator --JSON/MQTT--> MQTT broker --unchanged payload bytes--> Kafka --JS
 The Kafka consumer must therefore treat each record value as raw JSON bytes. At the ingestion boundary it unmarshals the JSON into input/wire structs that match the simulator payload, validates the data, and maps it into this service's internal domain types. Redis, TimescaleDB, and heartbeat-processing code operate only on those domain types and do not depend on the external JSON representation.
 
 ```go
-// internal/kafka/decode.go
+// internal/ingestion/decoder.go
 func DecodeMeterReading(raw []byte) (*models.MeterReading, error) {
     var input meterReadingJSON
     if err := json.Unmarshal(raw, &input); err != nil {
@@ -31,11 +31,11 @@ func DecodeMeterReading(raw []byte) (*models.MeterReading, error) {
 }
 ```
 
-Protobuf has a separate role: it is the intended transport contract for future communication between the IoT Ingestion Service and other internal services, such as the planned gRPC query interface. The `iot/v1` `.proto` contracts should still be authored in the separate `protobuf` repository and generated into the organization's `go-sdk`, but those generated types are **not** used to decode the current MQTT-to-Kafka messages and protobuf is not part of the current ingestion flow. See section 3.2 for the draft contracts.
+Protobuf has a separate role: it is the transport contract for the in-scope [gRPC query interface](08-grpc.md). The `iot/v1` contracts are authored in the separate `protobuf` repository and generated into the organization's SDKs, but generated types are **not** used to decode MQTT-to-Kafka messages and protobuf is not part of the ingestion wire flow.
 
 ## Proposed `iot/v1` proto contract (draft, matching established conventions)
 
-Based on the style of the existing `grid_transfer_rule.proto` and `order_events.proto` (proto3, `gridx.<domain>.v1` package naming, `_UNSPECIFIED = 0` as the first enum value, and the `go_package` alias pattern), the draft below carries the same telemetry concepts and values currently published by the IoT Simulator. It is a proposed future internal-service contract, not a protobuf representation of the simulator's JSON wire format. Its structure should ultimately be driven by the needs of internal API consumers rather than by a requirement to mirror the external JSON object exactly.
+Based on the style of the existing `grid_transfer_rule.proto` and `order_events.proto` (proto3, `gridx.<domain>.v1` package naming, `_UNSPECIFIED = 0` as the first enum value, and the `go_package` alias pattern), the draft below carries the telemetry concepts currently published by the IoT Simulator. It is an internal-service contract, not a protobuf representation of the simulator's JSON wire format. Its final shape is driven by internal API consumers.
 
 ```protobuf
 syntax = "proto3";
@@ -112,9 +112,9 @@ message Heartbeat {
   - **Nested** (`message MeterReadingData { solar_kw, consumption_kw, ... }` + `message WeatherMeta { weather_irradiance_wm2, cloud_cover_pct }`, referenced as fields inside `MeterReading`) - groups related values and may be clearer if internal consumers commonly treat measurements and weather metadata as separate concepts.
 
   The current draft defaults to flat because it matches established convention in this codebase, but this remains an internal API-design choice to confirm before submitting to the `protobuf` repo. It has no effect on the current JSON ingestion decoder.
-- No `ActuationCommand` message drafted yet - deferred until the Dispatch Service (section 7) is actually scoped.
+- No actuation command is defined because dispatch is outside this service's scope.
 - This would live at `proto/gridx/iot/v1/iot_events.proto` in the `protobuf` repo, following the existing `order_events.proto` naming pattern.
-- This draft is independent of the settled JSON ingestion wire format in section 3.1.
+- This draft is independent of the settled JSON ingestion wire format described above.
 
 ## Failure handling - dead-letter strategy
 
@@ -160,17 +160,52 @@ CREATE TABLE iot_data.ingestion_failures (
     kafka_topic     TEXT NOT NULL,
     kafka_partition INT NOT NULL,
     kafka_offset    BIGINT NOT NULL,
+    kafka_key       BYTEA,
     raw_payload     BYTEA NOT NULL,
+    payload_sha256  TEXT NOT NULL,
     failure_stage   TEXT NOT NULL,    -- 'decode' | 'grid_validation' | 'redis_write' | 'timescale_write'
     error_reason    TEXT NOT NULL,
     attempt_count   INT NOT NULL,     -- passed explicitly by the caller, not a silent default (see above)
-    failed_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    first_failed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_failed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolution      TEXT NOT NULL DEFAULT 'unresolved'
+                    CHECK (resolution IN ('unresolved','replayed','discarded')),
+    resolved_at     TIMESTAMPTZ,
+    resolved_by     TEXT,
+    UNIQUE (kafka_topic, kafka_partition, kafka_offset, failure_stage)
 );
-CREATE INDEX idx_ingestion_failures_failed_at ON iot_data.ingestion_failures (failed_at DESC);
+CREATE INDEX idx_ingestion_failures_unresolved
+    ON iot_data.ingestion_failures (last_failed_at DESC)
+    WHERE resolution = 'unresolved';
 ```
 
-No retention policy on this table - it's diagnostic, not telemetry. If it grows large quickly, that's a symptom worth investigating, not something to quietly auto-delete.
+Repeat processing upserts the same failure identity and increments/updates its attempt metadata instead of creating unlimited duplicate rows. Raw payloads may contain sensitive identifiers, so access is restricted and normal logs contain only the hash and Kafka coordinates. Unresolved rows have no automatic retention. Resolved rows may be purged under a documented audit policy. Growth and oldest-unresolved age are alerted, not quietly ignored.
+
+Replay is an explicit operator command that selects immutable failure IDs, revalidates the current contract, writes through the same idempotent handler, and records actor/time/result. It never edits Kafka offsets or bulk-replays an unbounded query. Concurrent replay of one failure is prevented with row locking or a lease.
 
 **Grid admission rule:** after decoding either a `MeterReading` or `Heartbeat`, check its `grid_id` against the in-memory grid-registry snapshot described in [05-startup-registry.md](05-startup-registry.md) before writing anything to Redis or the telemetry/registry tables. This is an O(1) map lookup and performs no per-message database query. An unknown grid is a permanent provisioning error, recorded with `failure_stage = 'grid_validation'`; its raw payload is thereby quarantined for investigation or controlled manual replay, and its Kafka offset is committed only after that failure record is durable. Ingestion must never create a grid from telemetry. This prevents configuration mistakes or untrusted messages from silently expanding the system's accepted grid boundary.
 
 **Critical rule:** commit the Kafka offset only after either all required processing succeeds or the exhausted failure is durably recorded. A malformed poison message is recorded and then committed so it cannot block the partition forever. If recording the failure itself fails, leave the offset uncommitted and retry; temporary partition backpressure is preferable to silently losing the record.
+
+## Delivery semantics, rebalances, and multi-store consistency
+
+The service provides **at-least-once processing**, not end-to-end exactly once. Kafka, TimescaleDB, and Redis cannot participate in one atomic transaction. A crash can therefore replay a record after its database write succeeded but before its offset commit. All handlers must be replay-safe:
+
+1. Validate and map the record without side effects.
+2. Write TimescaleDB first. A meter reading and its asset readings use one Postgres transaction and immutable inserts with conflict detection.
+3. Update Redis with a compare-and-set Lua script that replaces `latest` only when the incoming `(event_time, seq)` is newer than the stored value. A delayed retry must never overwrite newer live state.
+4. Commit the Kafka offset only after the durable write and required Redis update succeed. Redis is treated as a rebuildable projection, but if the product requires Redis to be current before acknowledging ingestion, its exhausted write failure remains uncommitted. This policy must be explicit in configuration and tests.
+
+Processing is sequential **within each topic-partition** and concurrent across partitions. Do not start an unbounded goroutine per record. Use bounded partition workers and pause/resume fetches for backpressure. Disable auto-commit. With `franz-go`, the implementation must follow the documented rebalance rules (for example, `BlockRebalanceOnPoll` with prompt `AllowRebalance`, or equivalent revoke draining) so work from a revoked partition cannot be committed by its former owner. A later offset must never be committed while an earlier record in the same partition is still unfinished.
+
+Configure and test `session.timeout`, `heartbeat.interval`, `max.poll.records`, fetch sizes, maximum record bytes, retry budgets, and shutdown drain time as one system. On shutdown: stop polling, finish or cancel bounded in-flight work, commit only completed contiguous offsets, then close the client. Readiness becomes false before draining begins.
+
+## Input contract and abuse limits
+
+Before JSON decoding, reject records larger than a configured maximum. Use strict decoding: reject unknown required-version fields where appropriate, trailing JSON, duplicate/invalid identities, non-finite numbers, timestamps outside an allowed clock-skew window, and values outside domain ranges. Accept only supported `schema_version` values. Record topic, partition, offset, key, schema version, and a payload hash in diagnostics, but never log the full payload by default.
+
+The Kafka record key is part of the contract. Verify in the live connector test that it is a stable per-house key and that the payload identity agrees with the key/topic. If the connector cannot guarantee this, change its key configuration before production; consumer-side validation cannot repair already-broken ordering.
+
+Topic creation is infrastructure-owned. Production topics must have explicit partition count, replication factor, `min.insync.replicas`, retention, and maximum-message settings; the client must not rely on automatic topic creation. Capacity testing determines partition count from the expected houses, tick rate, payload size, write amplification, and failure headroom.
+
+Implementation must be checked against the pinned [`franz-go/kgo` API documentation](https://pkg.go.dev/github.com/twmb/franz-go/pkg/kgo), especially `DisableAutoCommit`, `BlockRebalanceOnPoll`, `AllowRebalance`, and commit behavior; these options are coupled and must not be copied independently from snippets.

@@ -10,7 +10,7 @@ Per-message queries to `iot_data.grids` would put database latency and load dire
 
 1. Connect to TimescaleDB and apply goose migrations.
 2. Load all provisioned grids with `SELECT grid_id, lat, lon FROM iot_data.grids`.
-3. Validate the result and build a new immutable `map[string]Grid` snapshot. An empty registry is a startup error because this deployment expects the seed migration from section 6.4.
+3. Validate the result and build a new immutable `map[string]Grid` snapshot. An empty registry is a startup error because this deployment expects provisioned grid data.
 4. Publish the snapshot atomically, then mark grid admission ready.
 5. Start the background registry refresher.
 6. Only after those steps succeed, start the Kafka consumer and allow `/readyz` to report ready.
@@ -53,7 +53,7 @@ ON CONFLICT (grid_id) DO NOTHING;
 
 If a new grid is added to the simulator's config later, provision it in `iot_data.grids` through a new migration (or a future authenticated administrative provisioning workflow) before enabling that grid's publisher. Deployment ordering is therefore: apply the grid-provisioning change, verify the row and its coordinates, and only then start or enable telemetry for that grid.
 
-**Unknown grids are rejected, not auto-created.** Configuration drift between repositories is a realistic failure mode, but accepting it would turn a typo or untrusted message into a new administrative entity with incomplete metadata. Both meter-reading and heartbeat handlers therefore check the bootstrapped in-memory registry before any warm- or hot-storage write. An unknown `grid_id` follows section 3.3's permanent-failure path with `failure_stage = 'grid_validation'`. The durable failure row preserves the original payload for investigation and controlled manual replay after provisioning, while preventing the bad record from blocking its Kafka partition indefinitely.
+**Unknown grids are rejected, not auto-created.** Configuration drift between repositories is a realistic failure mode, but accepting it would turn a typo or untrusted message into a new administrative entity with incomplete metadata. Both handlers therefore check the bootstrapped registry before any store write. An unknown `grid_id` follows the permanent-failure path in [01-kafka-consumption.md](01-kafka-consumption.md) with `failure_stage = 'grid_validation'`.
 
 Provisioning can be verified before enabling telemetry:
 
