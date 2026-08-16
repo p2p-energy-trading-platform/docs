@@ -56,14 +56,48 @@ Order Service --(gRPC call, based on user preferences - see section 7)--> Dispat
 
 ---
 
-## 3. Kafka consumption
+## 3. Startup grid-registry bootstrap
+
+Per-message queries to `iot_data.grids` would put database latency and load directly on both high-volume ingestion paths. Instead, each ingestion-service instance owns a small in-memory registry containing the currently provisioned grids. The snapshot may retain the full `grid_id`, `lat`, and `lon` records, although admission currently needs only an O(1) lookup by `grid_id`.
+
+**Startup bootstrap order:**
+
+1. Connect to TimescaleDB and apply goose migrations.
+2. Load all provisioned grids with `SELECT grid_id, lat, lon FROM iot_data.grids`.
+3. Validate the result and build a new immutable `map[string]Grid` snapshot. An empty registry is a startup error because this deployment expects the seed migration from section 6.4.
+4. Publish the snapshot atomically, then mark grid admission ready.
+5. Start the background registry refresher.
+6. Only after those steps succeed, start the Kafka consumer and allow `/readyz` to report ready.
+
+If the initial query fails or produces invalid data, fail closed: do not start Kafka consumption. The container can retry startup according to the deployment restart policy, but it must never run with an empty fallback allowlist or accept every grid as a fallback.
+
+### 3.1 Runtime grid-registry refresh
+
+**Refreshing while the service is running:** use a configurable periodic full-snapshot refresh, defaulting to **120 seconds**. Grids are a small administrative registry, so one query per service instance every 120 seconds is inexpensive, predictable, and more reliable than using PostgreSQL `LISTEN/NOTIFY` alone, whose notifications can be missed while a connection is down.
+
+**NOTE**: New grids will not get created frequently so having 30s interval is not really needed!
+
+Each refresh performs the following:
+
+1. Query all rows from `iot_data.grids` into a new map without changing the live snapshot.
+2. Validate the complete result.
+3. Atomically swap the new immutable snapshot into place using `atomic.Pointer` (or a short-held `RWMutex`). Readers see either the complete old snapshot or the complete new one, never a partially refreshed map.
+4. Emit the loaded grid count, refresh duration, added/removed grid IDs, and `grid_registry_last_successful_refresh` metric/log field.
+
+If a refresh fails, retain the last known-good snapshot, report the failure, and retry at the next interval. Never clear or partially mutate the live registry. Message handlers continue using the last known-good provisioned set and still perform no database query on a cache miss. This avoids turning arbitrary unknown IDs into database traffic.
+
+For a new grid, the operational order is: provision the database row, wait until every ingestion instance reports a successful refresh containing that `grid_id`, and only then enable its telemetry publisher. Messages sent before that rollout completes are correctly quarantined as unknown-grid failures and require controlled manual replay. At this project's scale, periodic snapshot refresh is the recommended primary mechanism; a PostgreSQL notification may be added later only as a low-latency wake-up hint, while retaining periodic refresh as the recovery/reconciliation mechanism.
+
+---
+
+## 4. Kafka consumption
 
 - This service runs as a **single Kafka consumer group**, subscribed to both `iot.meter-readings` and `iot.heartbeats`, dispatching each record to the correct handler based on which topic it arrived on.
 - **Why one group, not two:** ordering isn't a factor either way - Kafka only orders within a partition, and the two message types already live on physically separate topics regardless of grouping, so there's no ordering guarantee to gain by splitting further. The real reason to split would be independent *scaling* of the much-higher-volume meter-reading stream away from heartbeat processing - at this project's scale, a single Go process handles both comfortably, and goroutines make "two topics, one process" close to free. Simpler to run and deploy while already juggling Kafka, Redis, TimescaleDB, and goose in one service.
 - **One real risk worth designing around regardless of grouping:** a Go process dies on an unrecovered panic. A bug in heartbeat processing shouldn't be able to take down meter-reading processing just because they share a process. Handlers return ordinary errors (feeding into the failure-recording path in section 3.3) rather than panicking - this sidesteps the risk entirely as long as that discipline is maintained.
 - **Partitioning / ordering:** ordering is required independently within each stream: all meter readings for one house must remain ordered within `iot.meter-readings`, and all heartbeats for one house must remain ordered within `iot.heartbeats`. Kafka does **not** provide ordering across the two topics, so the service must not rely on a meter reading and heartbeat having a defined order relative to each other. **Likely already satisfied within each topic:** Confluent's MQTT Source Connector documentation describes using the source MQTT topic string as the Kafka record key by default. Because each house has a unique MQTT meter topic and heartbeat topic, this should consistently partition that house's records within the corresponding Kafka topic. Treat this as *likely*, not confirmed, until the keys and partitions are inspected against live traffic (section 13).
 
-### 3.1 Message format - JSON ingestion and future protobuf contracts
+### 4.1 Message format - JSON ingestion and future protobuf contracts
 
 The ingestion wire format is settled. The IoT Simulator serializes meter readings and heartbeats as JSON and publishes them to the MQTT broker. The MQTT Source Connector then forwards the MQTT payload bytes unchanged into Kafka; there is no JSON-to-protobuf conversion anywhere in this path:
 
@@ -86,7 +120,7 @@ func DecodeMeterReading(raw []byte) (*models.MeterReading, error) {
 
 Protobuf has a separate role: it is the intended transport contract for future communication between the IoT Ingestion Service and other internal services, such as the planned gRPC query interface. The `iot/v1` `.proto` contracts should still be authored in the separate `protobuf` repository and generated into the organization's `go-sdk`, but those generated types are **not** used to decode the current MQTT-to-Kafka messages and protobuf is not part of the current ingestion flow. See section 3.2 for the draft contracts.
 
-### 3.2 Proposed `iot/v1` proto contract (draft, matching established conventions)
+### 4.2 Proposed `iot/v1` proto contract (draft, matching established conventions)
 
 Based on the style of the existing `grid_transfer_rule.proto` and `order_events.proto` (proto3, `gridx.<domain>.v1` package naming, `_UNSPECIFIED = 0` as the first enum value, and the `go_package` alias pattern), the draft below carries the same telemetry concepts and values currently published by the IoT Simulator. It is a proposed future internal-service contract, not a protobuf representation of the simulator's JSON wire format. Its structure should ultimately be driven by the needs of internal API consumers rather than by a requirement to mirror the external JSON object exactly.
 
@@ -171,7 +205,7 @@ message Heartbeat {
 - This would live at `proto/gridx/iot/v1/iot_events.proto` in the `protobuf` repo, following the existing `order_events.proto` naming pattern.
 - This draft is independent of the settled JSON ingestion wire format in section 3.1.
 
-### 3.3 Failure handling - dead-letter strategy
+### 4.3 Failure handling - dead-letter strategy
 
 **Two failure tiers, handled differently:**
 
@@ -234,7 +268,7 @@ No retention policy on this table - it's diagnostic, not telemetry. If it grows 
 
 ---
 
-## 4. Redis - hot storage design
+## 5. Redis - hot storage design
 
 Hot storage answers one question fast: **"what is this house doing right now?"** No history, just the latest state, overwritten every time a new reading arrives.
 
@@ -252,7 +286,7 @@ Key structure, with explicit Redis data types:
 
 ---
 
-## 5. Heartbeat processing - device discovery flow
+## 6. Heartbeat processing - device discovery flow
 
 This section spells out the exact flow, since a heartbeat can represent either a completely new device being seen for the first time, or a known device simply checking in again - both cases need to be handled cleanly, in both storage tiers, without creating duplicates.
 
@@ -306,7 +340,7 @@ Both operations are safe to run unconditionally on every heartbeat, new device o
 
 ---
 
-## 6. TimescaleDB - warm storage design
+## 7. TimescaleDB - warm storage design
 
 TimescaleDB is Postgres with a time-series extension (hypertables) layered on top. **Confirmed from `gridx-infra`'s bootstrap SQL:** this service gets exactly one schema, `iot_data`, provisioned inside the `gridx-timescaledb` container (host port 5433, internal 5432). Everything this service owns lives inside `iot_data`.
 
@@ -322,7 +356,7 @@ Within that single schema, the plan splits data into two categories: **plain tab
 
 **NOTE**: The below schema definitions are not totally finalized yet but they serve as a starting point.
 
-### 6.1 Plain Postgres tables (schema: `iot_data`)
+### 7.1 Plain Postgres tables (schema: `iot_data`)
 
 ```sql
 -- Registry of explicitly provisioned grids. Telemetry cannot create these rows.
@@ -366,7 +400,7 @@ CREATE INDEX idx_flexible_assets_house_id ON iot_data.flexible_assets(house_id);
 
 These get populated/updated from **heartbeat** messages (section 5), since a heartbeat is exactly what tells us a house or asset exists and what it's capable of.
 
-### 6.2 Hypertables (analytical / time-series)
+### 7.2 Hypertables (analytical / time-series)
 
 ```sql
 -- One row per meter reading, per house, per tick
@@ -430,7 +464,7 @@ ALTER TABLE iot_data.storage_asset_readings SET (
 SELECT add_compression_policy('iot_data.storage_asset_readings', INTERVAL '7 days');
 ```
 
-### 6.3 Migration tooling
+### 7.3 Migration tooling
 
 **Recommendation: [`pressly/goose`](https://github.com/pressly/goose).** Compared against `golang-migrate` on "best and simple": single-package setup vs. separate driver/source imports, native Go-migration support alongside plain SQL (useful for data seeds like section 6.4), native `embed.FS` support so migrations ship inside the compiled binary. Since this service only ever talks to one database engine, `golang-migrate`'s broader multi-database driver support isn't a relevant advantage here.
 
@@ -471,41 +505,9 @@ WHERE grid_id = $1;
 
 The query must return exactly one row with the expected coordinates. `lat` and `lon` are `NOT NULL`, so partially provisioned placeholder grids cannot be admitted.
 
-### 6.5 Startup grid-registry bootstrap
-
-Per-message queries to `iot_data.grids` would put database latency and load directly on both high-volume ingestion paths. Instead, each ingestion-service instance owns a small in-memory registry containing the currently provisioned grids. The snapshot may retain the full `grid_id`, `lat`, and `lon` records, although admission currently needs only an O(1) lookup by `grid_id`.
-
-**Startup bootstrap order:**
-
-1. Connect to TimescaleDB and apply goose migrations.
-2. Load all provisioned grids with `SELECT grid_id, lat, lon FROM iot_data.grids`.
-3. Validate the result and build a new immutable `map[string]Grid` snapshot. An empty registry is a startup error because this deployment expects the seed migration from section 6.4.
-4. Publish the snapshot atomically, then mark grid admission ready.
-5. Start the background registry refresher.
-6. Only after those steps succeed, start the Kafka consumer and allow `/readyz` to report ready.
-
-If the initial query fails or produces invalid data, fail closed: do not start Kafka consumption. The container can retry startup according to the deployment restart policy, but it must never run with an empty fallback allowlist or accept every grid as a fallback.
-
-### 6.6 Runtime grid-registry refresh
-
-**Refreshing while the service is running:** use a configurable periodic full-snapshot refresh, defaulting to **120 seconds**. Grids are a small administrative registry, so one query per service instance every 120 seconds is inexpensive, predictable, and more reliable than using PostgreSQL `LISTEN/NOTIFY` alone, whose notifications can be missed while a connection is down.
-
-**NOTE**: New grids will not get created frequently so having 30s interval is not really needed!
-
-Each refresh performs the following:
-
-1. Query all rows from `iot_data.grids` into a new map without changing the live snapshot.
-2. Validate the complete result.
-3. Atomically swap the new immutable snapshot into place using `atomic.Pointer` (or a short-held `RWMutex`). Readers see either the complete old snapshot or the complete new one, never a partially refreshed map.
-4. Emit the loaded grid count, refresh duration, added/removed grid IDs, and `grid_registry_last_successful_refresh` metric/log field.
-
-If a refresh fails, retain the last known-good snapshot, report the failure, and retry at the next interval. Never clear or partially mutate the live registry. Message handlers continue using the last known-good provisioned set and still perform no database query on a cache miss. This avoids turning arbitrary unknown IDs into database traffic.
-
-For a new grid, the operational order is: provision the database row, wait until every ingestion instance reports a successful refresh containing that `grid_id`, and only then enable its telemetry publisher. Messages sent before that rollout completes are correctly quarantined as unknown-grid failures and require controlled manual replay. At this project's scale, periodic snapshot refresh is the recommended primary mechanism; a PostgreSQL notification may be added later only as a low-latency wake-up hint, while retaining periodic refresh as the recovery/reconciliation mechanism.
-
 ---
 
-## 7. Dispatch Service (planned - not implemented in this phase)
+## 8. Dispatch Service (planned - not implemented in this phase)
 
 **This section reflects the team's current best understanding, explicitly flagged by the team member as "not properly planned" yet - treat everything below as a rough direction, not a locked design.**
 
@@ -518,7 +520,7 @@ The IoT Simulator already has the receiving end of this built and tested - this 
 
 ---
 
-## 8. gRPC interfaces (planned - not implemented in this phase)
+## 9. gRPC interfaces (planned - not implemented in this phase)
 
 **8.1 Ingestion query interface** - other services will need to *read* hot/warm data:
 
@@ -532,7 +534,7 @@ The IoT Simulator already has the receiving end of this built and tested - this 
 
 ---
 
-## 9. Tech stack
+## 10. Tech stack
 
 - **Language:** Go
 - **Kafka client:** [`franz-go`](https://github.com/twmb/franz-go) (`github.com/twmb/franz-go`). Pure Go, no cgo dependency (unlike `confluent-kafka-go`, which wraps `librdkafka` and drags a C toolchain into the Docker build). Chosen over `segmentio/kafka-go` for more active maintenance and a more complete feature set. **Honesty note:** the specific claim that `kafka-go` lacks cross-partition produce batching (a throughput ceiling `franz-go` doesn't share) came from research earlier in this planning process, not independently re-verified in this pass - worth a quick confirm against each library's current docs before treating it as fully settled, since this kind of detail can shift between library versions. The broader "pure Go, more actively maintained" reasoning is on firmer ground and less likely to have changed. The trade-off either way is a slightly steeper initial learning curve, closer to the raw Kafka protocol than `kafka-go`'s thinner abstraction - a one-time cost with solid documentation available.
@@ -548,7 +550,7 @@ The IoT Simulator already has the receiving end of this built and tested - this 
 
 ---
 
-## 10. Testing strategy
+## 11. Testing strategy
 
 Four tiers, mirroring the IoT Simulator's own testing discipline (161 tests, CI-enforced) adapted for a service whose real dependencies are Kafka/Redis/Postgres rather than pure computation.
 
@@ -564,7 +566,7 @@ Four tiers, mirroring the IoT Simulator's own testing discipline (161 tests, CI-
 
 ---
 
-## 11. Repository structure (proposed)
+## 12. Repository structure (proposed)
 
 **Note on `internal/health/` below:** `/healthz` provides basic process liveness to match the other services in `gridx-infra`. `/readyz` is now required by the startup-bootstrap design in section 6.5: it must remain false until the initial grid registry has loaded and Kafka consumption is safe to start.
 
@@ -617,7 +619,7 @@ Kafka topic names, broker addresses, the consumer-group name remain runtime conf
 
 ---
 
-## 12. Things we still need to decide as a team
+## 13. Things we still need to decide as a team
 
 **Resolved from `gridx-infra`'s bootstrap scripts, docker-compose, and connector config (no longer open):**
 
@@ -663,7 +665,7 @@ Kafka topic names, broker addresses, the consumer-group name remain runtime conf
 
 ---
 
-## 13. Note on the Kafka Connect connector setup
+## 14. Note on the Kafka Connect connector setup
 
 **Status: topic pattern and JSON payload handling are settled; live end-to-end verification remains before this is fully closed out.**
 
