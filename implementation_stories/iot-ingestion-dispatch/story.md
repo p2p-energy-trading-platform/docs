@@ -1,5 +1,5 @@
 ---
-connie-title: IoT Ingestion - 4 Week Implementation Story
+connie-title: IoT Ingestion - Implementation Story
 ---
 
 # IoT Ingestion Service - 4 Week Implementation Story
