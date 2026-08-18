@@ -89,7 +89,6 @@ iot-ingestion/
 ├── .gitignore                        # must exclude .env and local credentials
 ├── Dockerfile                        # pinned multi-stage, non-root runtime
 ├── docker-compose.yaml               # local development only
-├── Taskfile.yml
 ├── go.mod
 ├── go.sum
 └── README.md
