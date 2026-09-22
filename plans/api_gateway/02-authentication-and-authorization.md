@@ -4,9 +4,9 @@ connie-title: API Gateway - Authentication & Authorization
 
 # Authentication and Authorization
 
-## Decision: RS256 access tokens with JWKS
+## Decision: EdDSA (Ed25519) access tokens with JWKS
 
-Use asymmetrically signed JWT access tokens. Start with RS256 because it is widely supported and straightforward for the team to operate.
+Use asymmetrically signed JWT access tokens. Start with EdDSA using Ed25519 because it provides strong asymmetric signing with compact keys and is well suited to a new system where both the Auth Service and API Gateway are under the team's control.
 
 - The Auth Service has the private signing key and is the only service that signs access tokens.
 - The Auth Service publishes current and retiring public keys as a JSON Web Key Set (JWKS).
@@ -18,9 +18,9 @@ Use asymmetrically signed JWT access tokens. Start with RS256 because it is wide
 
 ## Why not HS256 with a shared secret?
 
-HS256 can be secure when supplied with a strong, protected secret, but every verifier that possesses the shared secret can also mint valid tokens. A gateway compromise could therefore become an Auth Service signing compromise. With RS256, the gateway holds only public verification material and cannot forge access tokens.
+HS256 can be secure when supplied with a strong, protected secret, but every verifier that possesses the shared secret can also mint valid tokens. A gateway compromise could therefore become an Auth Service signing compromise. With EdDSA, the gateway holds only public verification material and cannot forge access tokens.
 
-RS256 is not inherently universally stronger than HS256; it gives this architecture a safer separation of duties. EdDSA or ES256 can be evaluated later, but algorithm migration should not block the first implementation.
+EdDSA is not inherently universally stronger than HS256; it gives this architecture a safer separation of duties. RS256 or ES256 can be evaluated later if interoperability requirements arise, but algorithm migration should not block the first implementation.
 
 ## Token types
 
@@ -35,18 +35,18 @@ Access and refresh tokens have different purposes and must use mutually exclusiv
 
 Recommended claims:
 
-| Claim | Purpose |
-|---|---|
-| `iss` | Stable Auth Service issuer identifier |
-| `sub` | Stable user identifier |
-| `aud` | Intended resource server, initially the GridX API Gateway |
-| `exp` | Expiration time |
-| `iat` | Issued-at time |
-| `jti` | Unique token identifier when revocation/audit requires it |
-| `scope` | Space-delimited or structured coarse permissions |
+| Claim   | Purpose                                                                     |
+| ------- | --------------------------------------------------------------------------- |
+| `iss`   | Stable Auth Service issuer identifier                                       |
+| `sub`   | Stable user identifier                                                      |
+| `aud`   | Intended resource server, initially the GridX API Gateway                   |
+| `exp`   | Expiration time                                                             |
+| `iat`   | Issued-at time                                                              |
+| `jti`   | Unique token identifier when revocation/audit requires it                   |
+| `scope` | Space-delimited or structured coarse permissions                            |
 | `roles` | Optional broad roles; do not use as a substitute for resource authorization |
-| `typ` | Explicit token type, such as `at+jwt` |
-| `ver` | Optional account/token version for revocation strategy |
+| `typ`   | Explicit token type, such as `at+jwt`                                       |
+| `ver`   | Optional account/token version for revocation strategy                      |
 
 Do not put passwords, secrets, sensitive profile data, or frequently changing domain state in the token.
 
@@ -78,15 +78,15 @@ The JWKS URL is configured by the deployment, not derived blindly from an untrus
 
 ## Fastify responsibilities
 
-The Auth Service registers `@fastify/jwt` with private and public key material and signs using explicitly configured `algorithm`, `iss`, and `aud` values. The gateway registers it with a JWKS-backed public-key resolver and explicit verification constraints.
+The Auth Service registers `@fastify/jwt` with Ed25519 private and public key material and signs using explicitly configured `algorithm`, `iss`, and `aud` values. The gateway registers it with a JWKS-backed public-key resolver and explicit verification constraints.
 
 Decoding a JWT is not verification. Route code must use verified claims from the authentication hook, never values returned by decode alone.
 
 ## Authentication route categories
 
-- Public: register, login, refresh, password-reset initiation and completion.
-- Authenticated: logout current session, logout all sessions, profile read/update, password change, MFA management.
-- Privileged: account administration, if it is exposed through the public API.
+* Public: register, login, refresh, password-reset initiation and completion.
+* Authenticated: logout current session, logout all sessions, profile read/update, password change, MFA management.
+* Privileged: account administration, if it is exposed through the public API.
 
 “Public” means no existing access token is required. These routes still require strict schemas, Redis rate limits, abuse detection, and Auth Service controls.
 
@@ -103,20 +103,20 @@ The downstream service remains authoritative for resource and state checks, such
 
 Maintain a route authorization matrix containing:
 
-- Route and method.
-- Whether authentication is required.
-- Required scopes or roles.
-- Owning service/RPC.
-- Resource-level checks expected from the owner.
-- Audit-event requirement.
+* Route and method.
+* Whether authentication is required.
+* Required scopes or roles.
+* Owning service/RPC.
+* Resource-level checks expected from the owner.
+* Audit-event requirement.
 
 ## Revocation and account changes
 
 Short access-token lifetime is the default bound on stale permissions. Refresh-session revocation prevents new access tokens. For immediate enforcement on selected high-risk operations, choose one of:
 
-- An Auth Service token-version/account-status lookup with bounded caching.
-- A Redis deny list keyed by `jti` until token expiration.
-- An Auth Service introspection RPC for only those operations.
+* An Auth Service token-version/account-status lookup with bounded caching.
+* A Redis deny list keyed by `jti` until token expiration.
+* An Auth Service introspection RPC for only those operations.
 
 Avoid a mandatory Auth Service call for every normal request unless immediate revocation requirements justify its latency and availability cost.
 
@@ -149,17 +149,17 @@ Gateway authentication configuration should include:
 AUTH_ISSUER
 AUTH_AUDIENCE
 AUTH_JWKS_URI
-AUTH_ALLOWED_ALGORITHMS=RS256
+AUTH_ALLOWED_ALGORITHMS=EdDSA
 AUTH_CLOCK_TOLERANCE_SECONDS
 AUTH_JWKS_CACHE_TTL_SECONDS
 AUTH_JWKS_REQUEST_TIMEOUT_MS
 ```
 
-The Auth Service additionally needs a protected private key reference, current `kid`, and rotation configuration. Prefer a secrets manager or key-management service in production; do not place private keys in the repository or ordinary environment examples.
+The Auth Service additionally needs a protected Ed25519 private key reference, current `kid`, and rotation configuration. Prefer a secrets manager or key-management service in production; do not place private keys in the repository or ordinary environment examples.
 
 ## Key rotation procedure
 
-1. Generate a new key pair in the approved key store.
+1. Generate a new Ed25519 key pair in the approved key store.
 2. Publish the new public key in JWKS with a new `kid` while retaining the old key.
 3. Allow gateway caches to observe the new key.
 4. Begin signing new tokens with the new private key.
@@ -168,5 +168,5 @@ The Auth Service additionally needs a protected private key reference, current `
 
 ## References
 
-- [RFC 8725: JSON Web Token Best Current Practices](https://www.rfc-editor.org/rfc/rfc8725.html)
-- [Fastify JWT documentation](https://github.com/fastify/fastify-jwt)
+* [RFC 8725: JSON Web Token Best Current Practices](https://www.rfc-editor.org/rfc/rfc8725.html)
+* [Fastify JWT documentation](https://github.com/fastify/fastify-jwt)
