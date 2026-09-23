@@ -86,6 +86,8 @@ authorization information can be validated locally.
 
 ## Future Policy Engine
 
+**NOTE**: Policy does not need to be complex as of now. We have two roles: user and admin.
+
 A policy engine such as OPA can be considered later if authorization
 becomes sufficiently complex.
 

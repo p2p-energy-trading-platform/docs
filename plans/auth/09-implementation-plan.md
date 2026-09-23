@@ -84,7 +84,7 @@ Implement:
 
 Implement:
 
-- JWT verification middleware/plugin in Fastify Gateway.
+- JWT verification middleware/plugin in Fastify API Gateway.
 - JWKS retrieval/caching.
 - Issuer/audience validation.
 - User identity extraction.

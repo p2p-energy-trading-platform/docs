@@ -139,7 +139,7 @@ Example:
 
 ```json
 {
-  "alg": "RS256",
+  "alg": "EdDSA",
   "typ": "JWT"
 }
 ```

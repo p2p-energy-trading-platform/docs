@@ -149,6 +149,3 @@ Account onboarding should contain a KYC state:
 PENDING -> VERIFIED
         \-> REJECTED
 ```
-
-Do not hardcode a particular KYC provider until the actual requirement
-is confirmed.

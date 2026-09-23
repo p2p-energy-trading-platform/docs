@@ -128,5 +128,4 @@ known.
 - Never store plaintext passwords.
 - Never store plaintext refresh tokens.
 - Use UTC timestamps.
-- Use transactions around account creation and security-sensitive
-    state changes.
+- Use transactions around account creation and security-sensitive state changes.
