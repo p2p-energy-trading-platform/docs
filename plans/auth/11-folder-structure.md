@@ -1,5 +1,5 @@
 ---
-connie-title: Auth & Dewa Folder Structure
+connie-title: Auth and Dewa Folder Structure
 ---
 
 # Folder structure for Auth service and DEWA app
