@@ -133,6 +133,8 @@ Password reset tokens should be single-use and short-lived.
 
 ## SSO
 
+**NOTE**: Detailed SSO plan will be added later
+
 SSO should be implemented using a standard OIDC/OAuth flow when
 providers are introduced.
 
@@ -145,7 +147,26 @@ The internal user ID remains the stable application identity.
 
 Account onboarding should contain a KYC state:
 
-``` text
+```text
 PENDING -> VERIFIED
         \-> REJECTED
 ```
+
+The KYC submission should collect the following information:
+
+- **Full legal name**
+- **National ID**
+- **Date of birth**
+- **Identity verification document** - file upload of the required identity document
+
+The submitted KYC information should be stored securely and should only be accessible to authorized users/services involved in identity verification.
+
+The KYC verification process should:
+
+1. Collect the user's required identity information and identity document.
+2. Store the submission with a `PENDING` status.
+3. Perform identity verification.
+4. Set the KYC status to `VERIFIED` if verification succeeds.
+5. Set the KYC status to `REJECTED` if verification fails.
+6. Record the verification result and relevant timestamps for audit purposes.
+
