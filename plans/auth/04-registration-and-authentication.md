@@ -169,4 +169,3 @@ The KYC verification process should:
 4. Set the KYC status to `VERIFIED` if verification succeeds.
 5. Set the KYC status to `REJECTED` if verification fails.
 6. Record the verification result and relevant timestamps for audit purposes.
-
