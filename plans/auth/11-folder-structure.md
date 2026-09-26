@@ -147,37 +147,25 @@ A simple implementation is enough for DEWA app. This folder structure is subject
 
 ```text
 dewa-mock/
+├── public/                      # Static UI served by @fastify/static
+│   ├── index.html               # Customer portal UI for approvals
+│   ├── app.js                   # UI logic for fetching & approving requests
+│   └── styles.css               # Portal styling
+│
 ├── src/
-│   ├── app.ts
-│   ├── config.ts
-│   │
-│   ├── routes/
-│   │   ├── link-requests.ts
-│   │   └── meters.ts
-│   │
-│   ├── services/
-│   │   ├── link-request-service.ts
-│   │   └── meter-service.ts
-│   │
-│   ├── models/
-│   │   ├── LinkRequest.ts
-│   │   └── Meter.ts
-│   │
-│   ├── store/
-│   │   ├── link-request-store.ts
-│   │   └── meter-store.ts
-│   │
-│   └── frontend/
-│       ├── index.html
-│       ├── app.ts
-│       └── styles.css
+│   ├── app.ts                  # Fastify instance, plugins, and static routes
+│   ├── server.ts               # Server entry point and port listener
+│   ├── config.ts               # Port and environment configurations
+│   ├── types.ts                # LinkRequest interface and status types
+│   ├── store.ts                # In-memory array store for pending requests
+│   └── routes/
+│       └── link-requests.ts    # API endpoints for link requests
 │
 ├── tests/
-│   ├── link-requests.test.ts
-│   └── meters.test.ts
+│   └── link-requests.test.ts   # Integration tests for API endpoints
 │
+├── .env.example
 ├── package.json
 ├── tsconfig.json
-├── .env.example
 └── README.md
 ```
