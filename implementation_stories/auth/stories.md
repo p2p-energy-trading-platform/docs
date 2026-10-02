@@ -1,4 +1,3 @@
-
 ---
 connie-title: Auth Service - User Stories
 ---
