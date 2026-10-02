@@ -4,13 +4,13 @@ connie-title: Auth Service - User Stories
 
 # Auth Service - User Stories
 
-* **Epic:** Auth Service
-* **Repository:** [p2p-energy-trading-platform/auth-service](https://github.com/p2p-energy-trading-platform/auth-service)
-* **Plan:** [docs/plans/auth/09-implementation-plan.md](https://github.com/p2p-energy-trading-platform/docs/blob/main/plans/auth/09-implementation-plan.md)
+- **Epic:** Auth Service
+- **Repository:** [p2p-energy-trading-platform/auth-service](https://github.com/p2p-energy-trading-platform/auth-service)
+- **Plan:** [docs/plans/auth/09-implementation-plan.md](https://github.com/p2p-energy-trading-platform/docs/blob/main/plans/auth/09-implementation-plan.md)
 
-> This document breaks the Auth Service's 10-phase implementation plan down into component-level user stories, grouped by phase. Each story is checked against the actual `auth-service` repository — real files are cited under `Maps to`; anything not yet started is noted as such. Stories that are genuinely blocked (not just unstarted) are listed separately in Section 8 with reasons.
+> This document breaks the Auth Service's 10-phase implementation plan down into component-level user stories, grouped by phase. Each story is checked against the actual `auth-service` repository, with related files cited under `Maps to`. Implementation status is distinguished from test verification and cross-service integration. Stories that remain dependent on external decisions or other repositories are listed separately.
 
-**Current repo state at a glance:** foundational scaffolding (config, error handling, Redis/Postgres plugins, observability, gRPC server) is in place. Cryptographic primitives (Argon2id password hashing, Ed25519 JWT signing, JWKS) are implemented and unit-tested. No database migrations exist yet (`migrations/` is empty), and the actual auth flows (register/login/refresh/logout) and authorization checks are empty gRPC stubs with no logic (`// Register: unimplemented` etc.).
+**Current repo state at a glance:** The foundational service components, PostgreSQL and Redis connectivity, health checks, structured logging, and cryptographic utilities are implemented. Database migrations now exist for users, credentials, sessions, roles, permissions, and KYC-related tables. Registration, login, logout, and logout-all flows have been implemented and connected to the gRPC authentication service. Session persistence uses PostgreSQL with Redis caching. JWT signing and JWKS functionality are present. However, dedicated end-to-end verification, refresh-token rotation, complete authorization checks, and API Gateway authentication integration remain outstanding or require further verification.
 
 ---
 
@@ -18,65 +18,65 @@ connie-title: Auth Service - User Stories
 
 ### US-1.1 - Validate service configuration at startup
 
-> **As** a developer, <br>
-> **I want** the auth service to load and validate its configuration at startup, <br>
+> **As** a developer,  
+> **I want** the auth service to load and validate its configuration at startup,  
 > **so that** misconfiguration fails fast instead of causing runtime errors.
 
-*Maps to: `src/config/env.ts`, `src/config/schema.ts`, `src/config/types.ts`, `scripts/check-config.ts`*
+**Maps to:** `src/config/env.ts`, `src/config/schema.ts`, `src/config/types.ts`, `scripts/check-config.ts`
 
 **Acceptance Criteria:**
 
-- Invalid or missing required env vars cause the process to exit with a clear error at startup.
+- Invalid or missing required environment variables cause the process to exit with a clear error at startup.
 - `npm run check-config` validates configuration without starting the full service.
 - Config type errors are caught at compile time via `src/config/types.ts`.
 
-**Status:** Already implemented — mirrors the pattern built for `api-gateway`'s US-1.1.
+**Status:** Implemented. Configuration loading, validation, and typed configuration are present. Automated verification should be included in the final service check.
 
 ---
 
 ### US-1.2 - Structured logging
 
-> **As** an SRE/QA engineer, <br>
-> **I want** structured, leveled logging across the service, <br>
+> **As** an SRE/QA engineer,  
+> **I want** structured, leveled logging across the service,  
 > **so that** operational issues can be diagnosed from log output.
 
-*Maps to: `src/plugins/observability.ts`*
+**Maps to:** `src/plugins/observability.ts`
 
 **Acceptance Criteria:**
 
-- Log level is configurable via env var.
+- Log level is configurable via environment variable.
 - Logs are structured (JSON), not plain text.
 - Sensitive fields (passwords, tokens, secrets) are never logged in plaintext.
 
-**Status:** `src/plugins/observability.ts` exists (48 lines) but there is no dedicated `observability/logging.ts` or `observability/redaction.ts` as the README's aspirational structure describes — confirm with the team whether logging/redaction lives inside the plugin file or still needs to be split out and whether redaction is actually implemented yet.
+**Status:** Implemented. Structured logging and sensitive-field redaction are configured through the observability plugin. Redaction covers sensitive authentication-related fields, including passwords, authorization data, and tokens.
 
 ---
 
 ### US-1.3 - Database and Redis connectivity
 
-> **As** the service, <br>
-> **I want** managed PostgreSQL and Redis connections wired into Fastify, <br>
+> **As** the service,  
+> **I want** managed PostgreSQL and Redis connections wired into Fastify,  
 > **so that** downstream features can persist and cache data reliably.
 
-*Maps to: `src/plugins/database.ts`, `src/plugins/database.test.ts`, `src/plugins/redis.ts`, `src/plugins/redis.test.ts`*
+**Maps to:** `src/plugins/database.ts`, `src/plugins/database.test.ts`, `src/plugins/redis.ts`, `src/plugins/redis.test.ts`
 
 **Acceptance Criteria:**
 
 - Database plugin establishes a Postgres connection pool and exposes it via Fastify decoration.
 - Redis plugin establishes a connection and exposes it similarly.
-- Both connections are covered by tests (already present) and reported in the readiness check (see US-1.4).
+- Both connections are covered by tests and reported in the readiness check (see US-1.4).
 
-**Status:** Already implemented and tested.
+**Status:** Implemented. PostgreSQL and Redis plugins and their corresponding tests are present.
 
 ---
 
 ### US-1.4 - Health and readiness endpoints
 
-> **As** an infrastructure operator, <br>
-> **I want** liveness and readiness endpoints on the auth service, <br>
+> **As** an infrastructure operator,  
+> **I want** liveness and readiness endpoints on the auth service,  
 > **so that** orchestration knows when the service is healthy and ready to receive traffic.
 
-*Maps to: `src/transport/http/health/routes.ts`, `src/transport/http/health/liveness.ts`, `src/transport/http/health/readiness.ts`*
+**Maps to:** `src/transport/http/health/routes.ts`, `src/transport/http/health/liveness.ts`, `src/transport/http/health/readiness.ts`
 
 **Acceptance Criteria:**
 
@@ -84,7 +84,7 @@ connie-title: Auth Service - User Stories
 - Readiness endpoint returns 200 only when Postgres and Redis connections are established.
 - Unready state returns a non-200 status.
 
-**Status:** Already implemented.
+**Status:** Implemented. Liveness and readiness endpoints are present, including database and Redis dependency checks.
 
 ---
 
@@ -92,19 +92,19 @@ connie-title: Auth Service - User Stories
 
 ### US-2.1 - Core schema migrations
 
-> **As** a developer, <br>
-> **I want** Goose migrations for users, credentials, sessions/refresh tokens, roles, permissions, user-roles, and role-permissions, <br>
+> **As** a developer,  
+> **I want** Goose migrations for users, credentials, sessions/refresh tokens, roles, permissions, user-roles, and role-permissions,  
 > **so that** the service has a working relational schema to build features against.
 
-*Maps to: `migrations/` (currently empty except `.gitkeep`)*
+**Maps to:** `migrations/20260928103514_update_timestamp_function.sql`, `migrations/20260928103919_create_users_table.sql`, `migrations/20260928104328_create_credentials_table.sql`, `migrations/20260928105718_create_sessions_table.sql`, `migrations/20260928105929_create_roles_permissions_tables.sql`, `migrations/20260928110810_create_kyc_tables.sql`
 
 **Acceptance Criteria:**
 
-- Each table listed above has a forward migration and a corresponding rollback migration.
+- Each required table has a forward migration and a corresponding rollback migration.
 - Appropriate indexes and uniqueness constraints are added (e.g. unique email, unique role name).
-- `npm run db:up` / `npm run db:status` / `npm run db:down` work against a local Postgres instance via `gridx-infra`/`gridx-workspace`.
+- `npm run db:up` / `npm run db:status` / `npm run db:down` work against a local Postgres instance via `gridx-infra` / `gridx-workspace`.
 
-**Status:** Not started — `migrations/` only contains `.gitkeep`. This is a hard prerequisite for nearly every feature in Phases 3–6, so it should be prioritized first.
+**Status:** Implemented. Migration files now exist for the core user, credential, session, role/permission, and KYC schemas. Migration execution, rollback behavior, and database constraints should be verified against the local PostgreSQL environment before marking the story fully verified.
 
 ---
 
@@ -112,11 +112,11 @@ connie-title: Auth Service - User Stories
 
 ### US-3.1 - Password hashing primitive
 
-> **As** the service, <br>
-> **I want** a reusable Argon2id password hashing/verification utility, <br>
+> **As** the service,  
+> **I want** a reusable Argon2id password hashing/verification utility,  
 > **so that** credentials are never stored or compared in plaintext.
 
-*Maps to: `src/infrastructure/crypto/password-hasher.ts`, `src/infrastructure/crypto/password-hasher.test.ts`*
+**Maps to:** `src/infrastructure/crypto/password-hasher.ts`, `src/infrastructure/crypto/password-hasher.test.ts`
 
 **Acceptance Criteria:**
 
@@ -124,44 +124,44 @@ connie-title: Auth Service - User Stories
 - Verify function correctly accepts matching passwords and rejects non-matching ones.
 - Unit tests cover both paths.
 
-**Status:** Already implemented and tested.
+**Status:** Implemented and unit-tested.
 
 ---
 
 ### US-3.2 - User registration
 
-> **As** a new user, <br>
-> **I want** to register an account with email and password, <br>
+> **As** a new user,  
+> **I want** to register an account with email and password,  
 > **so that** I can access the platform.
 
-*Maps to: `src/features/authentication/register.ts` (not yet created), `src/transport/grpc/services/auth-service.ts`*
+**Maps to:** `src/features/authentication/register.ts`, `src/features/users/repository.ts`, `src/transport/grpc/services/auth-service.ts`, `migrations/20260928103919_create_users_table.sql`, `migrations/20260928104328_create_credentials_table.sql`
 
 **Acceptance Criteria:**
 
 - Email is normalized (lowercase, trimmed) before storage.
 - Password is hashed via US-3.1's utility before persistence.
 - Duplicate email registration is rejected with a clear error.
-- gRPC `Register` method (currently `// Register: unimplemented` in `auth-service.ts`) is implemented and wired to this logic.
+- gRPC `Register` method is implemented and wired to this logic.
 
-**Status:** Not started. The gRPC method slot exists but is an empty stub. **Depends on US-2.1** (users/credentials tables must exist first).
+**Status:** Implemented. Registration includes email normalization, password hashing, user and credential persistence, default role assignment, and duplicate-email handling. Database-backed integration tests should be verified before considering the complete flow fully tested.
 
 ---
 
 ### US-3.3 - Login and logout
 
-> **As** a registered user, <br>
-> **I want** to log in with email/password and log out, <br>
+> **As** a registered user,  
+> **I want** to log in with email/password and log out,  
 > **so that** I can securely access and end my session.
 
-*Maps to: `src/features/authentication/login.ts`, `src/features/authentication/logout.ts` (not yet created), `src/transport/grpc/services/auth-service.ts`*
+**Maps to:** `src/features/authentication/login.ts`, `src/features/authentication/logout.ts`, `src/features/sessions/repository.ts`, `src/features/users/repository.ts`, `src/transport/grpc/services/auth-service.ts`
 
 **Acceptance Criteria:**
 
-- Login verifies credentials via US-3.1 and checks account status (active/locked/disabled) before issuing tokens.
+- Login verifies credentials via US-3.1 and checks account status before issuing tokens.
 - Logout invalidates the current session/refresh token.
-- gRPC `Login` and `Logout` methods (currently stubbed) are implemented.
+- gRPC `Login` and `Logout` methods are implemented.
 
-**Status:** Not started. **Depends on US-2.1 and US-3.2.**
+**Status:** Implemented. Login verifies credentials, checks account status, issues an access token and refresh token, and persists the session. Logout revokes the corresponding session using the refresh-token hash. Full authentication-flow integration testing remains to be verified.
 
 ---
 
@@ -169,11 +169,11 @@ connie-title: Auth Service - User Stories
 
 ### US-4.1 - JWT signing and key management
 
-> **As** the service, <br>
-> **I want** Ed25519-based JWT access-token signing with a key provider abstraction, <br>
+> **As** the service,  
+> **I want** Ed25519-based JWT access-token signing with a key provider abstraction,  
 > **so that** tokens are cryptographically verifiable and keys can be rotated.
 
-*Maps to: `src/infrastructure/crypto/jwt-signer.ts` (+test), `src/infrastructure/crypto/key-provider.ts` (+test), `scripts/generate-dev-keys.mjs`*
+**Maps to:** `src/infrastructure/crypto/jwt-signer.ts`, `src/infrastructure/crypto/jwt-signer.test.ts`, `src/infrastructure/crypto/key-provider.ts`, `src/infrastructure/crypto/key-provider.test.ts`, `scripts/generate-dev-keys.mjs`
 
 **Acceptance Criteria:**
 
@@ -181,59 +181,59 @@ connie-title: Auth Service - User Stories
 - Key provider supports loading the current signing key and exposes key metadata for JWKS.
 - Unit tests cover signing and key retrieval.
 
-**Status:** Already implemented and tested.
+**Status:** Implemented and unit-tested. JWT signing and key-provider functionality are present.
 
 ---
 
 ### US-4.2 - JWKS endpoint
 
-> **As** a relying party (e.g. the API Gateway), <br>
-> **I want** a JWKS endpoint publishing the service's public keys, <br>
+> **As** a relying party (e.g. the API Gateway),  
+> **I want** a JWKS endpoint publishing the service's public keys,  
 > **so that** access tokens can be verified without calling the auth service on every request.
 
-*Maps to: `src/features/keys/service.ts`, `src/features/keys/jwks.ts`, `src/transport/http/jwks.ts`*
+**Maps to:** `src/features/keys/service.ts`, `src/features/keys/jwks.ts`, `src/transport/http/jwks.ts`
 
 **Acceptance Criteria:**
 
 - `GET /.well-known/jwks.json` (or equivalent) returns the current public key(s) in JWK format.
-- Response is cacheable (appropriate cache headers).
+- Response is cacheable with appropriate cache headers.
 
-**Status:** Already implemented — `src/transport/http/jwks.ts` exists and wires to `features/keys`.
+**Status:** Implemented in the Auth Service. JWKS-related key functionality and the HTTP endpoint are present. End-to-end verification from the API Gateway remains part of US-8.1.
 
 ---
 
 ### US-4.3 - Refresh tokens and rotation
 
-> **As** a logged-in user, <br>
-> **I want** my session to be extendable via a refresh token that rotates on use, <br>
+> **As** a logged-in user,  
+> **I want** my session to be extendable via a refresh token that rotates on use,  
 > **so that** I stay logged in securely without re-entering credentials constantly.
 
-*Maps to: `src/features/authentication/refresh.ts`, `src/features/sessions/*` (not yet created), `src/infrastructure/crypto/token-hasher.ts`*
+**Maps to:** `src/infrastructure/crypto/token-hasher.ts`, `src/features/sessions/repository.ts`, `src/features/authentication/login.ts`
 
 **Acceptance Criteria:**
 
 - Refresh token is single-use; using it issues a new access token and a new refresh token, invalidating the old one.
-- Refresh tokens are stored hashed (via `token-hasher.ts`), never in plaintext.
-- gRPC `Refresh` method (currently stubbed) is implemented.
+- Refresh tokens are stored hashed, never in plaintext.
+- gRPC `Refresh` method is implemented.
 
-**Status:** Not started — `token-hasher.ts` primitive exists, but no session/refresh feature logic. **Depends on US-2.1 and US-3.3.**
+**Status:** Partially implemented. Refresh-token hashing and session persistence are present, and login issues a refresh token stored as a hash. However, a complete refresh endpoint with single-use token rotation has not been verified and remains outstanding.
 
 ---
 
 ### US-4.4 - Session revocation ("logout all")
 
-> **As** a user, <br>
-> **I want** to revoke all active sessions (e.g. after a suspected compromise), <br>
+> **As** a user,  
+> **I want** to revoke all active sessions,  
 > **so that** I can secure my account from any device.
 
-*Maps to: `src/features/authentication/logout-all.ts` (not yet created)*
+**Maps to:** `src/features/authentication/logout-all.ts`, `src/features/sessions/repository.ts`, `src/transport/grpc/services/auth-service.ts`
 
 **Acceptance Criteria:**
 
 - All refresh tokens/sessions for the user are invalidated in one operation.
-- gRPC `LogoutAll` method (currently stubbed) is implemented.
+- gRPC `LogoutAll` method is implemented.
 
-**Status:** Not started. **Depends on US-4.3.**
+**Status:** Implemented. The logout-all flow and gRPC method are present. Session revocation is persisted in PostgreSQL, with Redis cache invalidation handled on a best-effort basis. The caller identity is obtained from the `x-gridx-user-id` request header; secure identity propagation must be enforced by the trusted gateway so clients cannot supply or spoof this identity directly. Dedicated integration tests should be verified.
 
 ---
 
@@ -241,19 +241,19 @@ connie-title: Auth Service - User Stories
 
 ### US-5.1 - Roles and permissions data model + checks
 
-> **As** the platform, <br>
-> **I want** roles, permissions, and user-role assignments enforced via an authorization service, <br>
+> **As** the platform,  
+> **I want** roles, permissions, and user-role assignments enforced via an authorization service,  
 > **so that** access control decisions are centralized and consistent.
 
-*Maps to: `src/features/authorization/*` (not yet created), `src/transport/grpc/services/authorization-service.ts`*
+**Maps to:** `migrations/20260928105929_create_roles_permissions_tables.sql`, `src/features/users/repository.ts`, `src/transport/grpc/services/authorization-service.ts`
 
 **Acceptance Criteria:**
 
-- `GetUser` and `CheckPermission` gRPC methods (currently `// unimplemented` stubs) are implemented.
+- `GetUser` and `CheckPermission` gRPC methods are implemented.
 - Permission checks correctly reflect a user's assigned roles.
 - Covered by unit tests.
 
-**Status:** Not started — only the empty gRPC service scaffold exists (`authorization-service.ts` is 6 lines, both methods commented out). **Depends on US-2.1** (roles/permissions/user-roles/role-permissions tables).
+**Status:** Partially implemented. Role and permission database structures and default role assignment are present. However, the `GetUser` and `CheckPermission` authorization gRPC methods remain unimplemented, so centralized permission enforcement is outstanding.
 
 ---
 
@@ -261,18 +261,18 @@ connie-title: Auth Service - User Stories
 
 ### US-6.1 - Onboarding state machine
 
-> **As** a new user, <br>
-> **I want** my onboarding/KYC progress tracked through defined states, <br>
+> **As** a new user,  
+> **I want** my onboarding/KYC progress tracked through defined states,  
 > **so that** the platform knows what verification steps remain before I can trade.
 
-*Maps to: not yet created — no `features/onboarding/` or similar exists*
+**Maps to:** `migrations/20260928110810_create_kyc_tables.sql`
 
 **Acceptance Criteria:**
 
 - Defined onboarding states (e.g. `registered`, `pending_verification`, `verified`, `rejected`).
 - State transitions are validated (no skipping required steps).
 
-**Status:** Not started — listed here rather than "blocked" because the state machine itself doesn't require an external decision, only the actual KYC provider integration does (see Section 8).
+**Status:** Partially implemented. KYC-related database schema has been created. However, onboarding state-transition logic, validation, and application-level workflows have not been verified or completed.
 
 ---
 
@@ -280,11 +280,11 @@ connie-title: Auth Service - User Stories
 
 ### US-7.1 - Security and failure-recovery test suite
 
-> **As** an SRE/QA engineer, <br>
-> **I want** dedicated security, load, and failure-recovery tests, <br>
+> **As** an SRE/QA engineer,  
+> **I want** dedicated security, load, and failure-recovery tests,  
 > **so that** the auth service is verified against abuse and partial-outage scenarios before production use.
 
-*Maps to: `test/security/`, `test/load/` (per README's planned structure — not yet created; only `tests/.gitkeep` currently exists)*
+**Maps to:** `src/infrastructure/crypto/`, `src/plugins/database.test.ts`, `src/plugins/redis.test.ts`, `tests/`
 
 **Acceptance Criteria:**
 
@@ -292,45 +292,45 @@ connie-title: Auth Service - User Stories
 - Load tests establish baseline throughput/latency for login and token verification.
 - Rate-limit tuning and key-rotation are explicitly tested.
 
-**Status:** Not started — correctly sequenced last, since it depends on nearly every other phase being functional first.
+**Status:** Partially implemented. Unit tests exist for cryptographic utilities and infrastructure plugins. A dedicated comprehensive security, load, and failure-recovery test suite has not been verified. Authentication-flow integration tests, token replay tests, brute-force protection tests, and load benchmarks remain to be completed or confirmed.
 
 ---
 
-## 8. Blocked User Stories (Cannot Be Developed Yet)
+## 8. Blocked / Cross-Service User Stories
 
 ### US-8.1 - Gateway JWT verification integration
 
-> **As** the API Gateway, <br>
-> **I want** to verify access tokens locally using the auth service's JWKS, <br>
+> **As** the API Gateway,  
+> **I want** to verify access tokens locally using the auth service's JWKS,  
 > **so that** most requests don't require a round-trip to the auth service.
 
-*Maps to: this work lives in the `api-gateway` repository, not `auth-service` — see that project's Authentication story (US-7.1 in the `api-gateway` doc)*
+**Maps to:** `api-gateway` repository, including `src/config/env.ts`, `src/plugins/security.ts`, and `src/app.ts`; Auth Service JWKS implementation under `src/transport/http/jwks.ts`.
 
-**Reason Blocked:** This is Phase 7 of the plan and is explicitly gateway-side work. It's tracked in the separate `api-gateway` user stories document and depends on US-4.1/US-4.2 above (JWKS) being stable first.
+**Reason / Status:** Not implemented in the current API Gateway runtime. Gateway configuration contains authentication-related settings, but the reviewed application bootstrap currently registers security, CORS, Redis, and health functionality without a complete JWT verification plugin, gRPC authentication integration, or protected authentication routes. The TypeScript SDK contains generated authentication contracts, but these alone do not provide runtime verification. This story remains outstanding and depends on stable Auth Service token/JWKS behavior.
 
 ---
 
 ### US-8.2 - SSO / OIDC providers
 
-> **As** a user, <br>
-> **I want** to sign in via an external identity provider (SSO), <br>
+> **As** a user,  
+> **I want** to sign in via an external identity provider (SSO),  
 > **so that** I don't need a separate password for this platform.
 
-*Maps to: not yet created*
+**Maps to:** Not yet implemented.
 
-**Reason Blocked:** The implementation plan explicitly states Phase 8 (SSO) should only begin "after the local authentication flow is stable" — i.e. after Phases 3–4 are complete. Starting this now would mean building against a moving target.
+**Reason Blocked:** The implementation plan states that Phase 8 (SSO) should begin after the local authentication flow is stable. Registration, login, and session functionality are now implemented, but refresh-token rotation and complete authorization integration still require further work before the local authentication foundation can be considered fully stable.
 
 ---
 
 ### US-8.3 - KYC provider integration
 
-> **As** the platform, <br>
-> **I want** to integrate a third-party KYC/identity-verification provider, <br>
+> **As** the platform,  
+> **I want** to integrate a third-party KYC/identity-verification provider,  
 > **so that** users can be verified before trading real energy/funds.
 
-*Maps to: not yet created*
+**Maps to:** KYC schema migration: `migrations/20260928110810_create_kyc_tables.sql`
 
-**Reason Blocked:** The plan itself states the KYC service boundary and provider must be *selected* before integration work starts ("Integrate the selected provider"). No provider decision has been made yet — this needs a team/supervisor decision, not just development time.
+**Reason Blocked:** The KYC database foundation exists, but the external provider has not been selected or integrated. Provider selection and the required service boundary must be agreed upon by the team before provider-specific integration begins.
 
 ---
 
@@ -338,23 +338,23 @@ connie-title: Auth Service - User Stories
 
 | ID | Story | Phase | Status |
 |------|--------|-------|--------|
-| US-1.1 | Validate service configuration at startup | 1 | Done |
-| US-1.2 | Structured logging | 1 | Partial — confirm redaction/logging split |
-| US-1.3 | Database and Redis connectivity | 1 | Done |
-| US-1.4 | Health and readiness endpoints | 1 | Done |
-| US-2.1 | Core schema migrations | 2 | Not started — prerequisite for Phases 3–6 |
-| US-3.1 | Password hashing primitive | 3 | Done |
-| US-3.2 | User registration | 3 | Not started — depends on US-2.1 |
-| US-3.3 | Login and logout | 3 | Not started — depends on US-2.1, US-3.2 |
-| US-4.1 | JWT signing and key management | 4 | Done |
-| US-4.2 | JWKS endpoint | 4 | Done |
-| US-4.3 | Refresh tokens and rotation | 4 | Not started — depends on US-2.1, US-3.3 |
-| US-4.4 | Session revocation ("logout all") | 4 | Not started — depends on US-4.3 |
-| US-5.1 | Roles/permissions authorization checks | 6 | Not started — depends on US-2.1 |
-| US-6.1 | Onboarding state machine | 9 | Not started |
-| US-7.1 | Security/failure-recovery test suite | 10 | Not started — depends on all above |
-| US-8.1 | Gateway JWT verification integration | 7 | Blocked — lives in `api-gateway` repo |
-| US-8.2 | SSO / OIDC providers | 8 | Blocked — plan requires Phases 3–4 stable first |
-| US-8.3 | KYC provider integration | 9 | Blocked — provider not yet selected |
+| US-1.1 | Validate service configuration at startup | 1 | Implemented |
+| US-1.2 | Structured logging | 1 | Implemented |
+| US-1.3 | Database and Redis connectivity | 1 | Implemented |
+| US-1.4 | Health and readiness endpoints | 1 | Implemented |
+| US-2.1 | Core schema migrations | 2 | Implemented — verify migration execution and rollback |
+| US-3.1 | Password hashing primitive | 3 | Done — implemented and unit-tested |
+| US-3.2 | User registration | 3 | Implemented — verify database-backed integration tests |
+| US-3.3 | Login and logout | 3 | Implemented — verify end-to-end authentication tests |
+| US-4.1 | JWT signing and key management | 4 | Done — implemented and unit-tested |
+| US-4.2 | JWKS endpoint | 4 | Implemented — gateway integration pending |
+| US-4.3 | Refresh tokens and rotation | 4 | Partial — refresh-token issuance/storage exists; rotation outstanding |
+| US-4.4 | Session revocation ("logout all") | 4 | Implemented — verify identity propagation and integration tests |
+| US-5.1 | Roles/permissions authorization checks | 6 | Partial — schema/default role assignment exists; permission checks outstanding |
+| US-6.1 | Onboarding state machine | 9 | Partial — KYC schema exists; state-transition logic outstanding |
+| US-7.1 | Security/failure-recovery test suite | 10 | Partial — unit tests exist; comprehensive security/load tests outstanding |
+| US-8.1 | Gateway JWT verification integration | 7 | Not implemented — gateway runtime integration outstanding |
+| US-8.2 | SSO / OIDC providers | 8 | Blocked — local authentication flow must be stabilized |
+| US-8.3 | KYC provider integration | 9 | Blocked — provider selection required |
 
 ---
