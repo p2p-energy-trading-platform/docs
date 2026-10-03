@@ -339,7 +339,7 @@ connie-title: Auth Service - User Stories
 # 9. Account Management & Recovery
 
 > **Plan:** [docs/plans/auth/12-account-management-and-recovery.md](https://github.com/p2p-energy-trading-platform/docs/blob/main/plans/auth/12-account-management-and-recovery.md)
-
+>
 > This section covers account-management and recovery capabilities that extend the existing authentication foundation. All account and credential business logic remains within the Auth Service. Email delivery is abstracted so the temporary Mailtrap implementation can later be replaced by a dedicated Notification Service.
 
 ---
