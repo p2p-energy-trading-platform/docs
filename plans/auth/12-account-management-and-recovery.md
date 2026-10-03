@@ -39,7 +39,7 @@ Implement the following capabilities:
 - Password change for authenticated users.
 - Password recovery for users who cannot access their accounts.
 - Email change requests and verification.
-- Password reset token persistence and validation.
+- Password reset and email verification token management using Redis.
 - Temporary email delivery adapter.
 - gRPC API contracts and TypeScript SDK integration.
 - Unit and integration tests.
@@ -189,8 +189,8 @@ A user who cannot access their account can request a password reset.
 - Normalize the email before lookup.
 - Generate a cryptographically secure random reset token.
 - Store only a hash of the reset token.
-- Associate the token with the relevant user.
-- Set an expiration time.
+- Store the hashed token in Redis with the relevant user ID.
+- Set a Redis TTL for automatic expiration.
 - Deliver the reset instructions through the email abstraction.
 - Return a generic response regardless of whether the email exists.
 - Apply rate limiting to prevent abuse.
@@ -213,14 +213,15 @@ A user can set a new password using a valid password-reset token.
 **Requirements:**
 
 - Accept the reset token and new password.
-- Hash the supplied token before database lookup.
-- Verify that the token exists, has not expired, and has not been used.
+- Hash the supplied token before Redis lookup..
+- Verify that the token exists and has not expired.
+- Consume the Redis token after successful validation so it cannot be reused.
 - Validate the new password.
 - Hash the new password using Argon2id.
 - Update the user's credential.
 - Mark the reset token as consumed.
 - Revoke all active sessions for the user.
-- Perform credential update and token consumption atomically.
+- Ensure password update and token consumption are handled safely to prevent token reuse.
 
 **Acceptance Criteria:**
 
@@ -246,9 +247,8 @@ An authenticated user can request a change to their registered email.
 - Normalize and validate the address.
 - Reject an address already associated with another account.
 - Generate a secure verification token.
-- Store only the token hash.
-- Associate the token with the user and proposed email.
-- Set an expiration time.
+- Store the hashed token in Redis together with the user ID and proposed email.
+- Set a Redis TTL for automatic expiration
 - Send a verification message to the proposed email address.
 - Keep the existing email active until verification succeeds.
 
@@ -268,14 +268,15 @@ A user confirms the proposed email address using a valid verification token.
 
 **Requirements:**
 
-- Validate the token securely.
-- Verify that the token is unused and unexpired.
+- Hash the supplied token before Redis lookup.
+- Verify that the token exists and has not expired.
+- Retrieve the associated user ID and proposed email from Redis.
 - Confirm that the proposed email remains available.
 - Update the user's email.
 - Mark the email as verified.
-- Consume the verification token.
+- Consume the Redis token after successful validation so it cannot be reused
 - Revoke existing sessions if required by the account-security policy.
-- Perform the email update and token consumption atomically.
+- Update the email in PostgreSQL only after successful token validation.
 
 **Acceptance Criteria:**
 
@@ -349,59 +350,72 @@ When the Notification Service becomes available:
 - Keep password-reset and email-verification rules inside Auth Service.
 - Avoid duplicating account-management logic in the Notification Service.
 
-## 8. Database Design
+## 8. Data Storage
 
-The existing schema contains:
+The existing PostgreSQL schema contains:
 
 - `users`
 - `credentials`
 - `sessions`
 
-Additional token persistence may be required.
+Permanent account and credential information will continue to be stored
+in PostgreSQL.
 
-### 8.1 Proposed Recovery Token Table
+Temporary password-reset and email-verification tokens will be stored
+in Redis because they are short-lived authentication data.
 
-A dedicated table may be introduced for password-reset tokens.
+### 8.1 Redis Token Storage
 
-Suggested fields:
+Password-reset tokens will be stored using a Redis key similar to:
 
-| Field | Purpose |
-|---|---|
-| `id` | Unique token record identifier |
-| `user_id` | Associated user |
-| `token_hash` | Hash of the generated token |
-| `expires_at` | Token expiration timestamp |
-| `used_at` | Timestamp when consumed |
-| `created_at` | Creation timestamp |
+`auth:password-reset:<token-hash>`
 
-### 8.2 Proposed Email Verification Token Table
+The Redis value will contain the associated user ID.
 
-A separate table may be introduced for email-change verification.
+Email-change verification tokens will be stored using a Redis key similar to:
 
-Suggested fields:
+`auth:email-verification:<token-hash>`
 
-| Field | Purpose |
-|---|---|
-| `id` | Unique verification record identifier |
-| `user_id` | Associated user |
-| `pending_email` | Proposed email address |
-| `token_hash` | Hash of the verification token |
-| `expires_at` | Token expiration timestamp |
-| `used_at` | Timestamp when consumed |
-| `created_at` | Creation timestamp |
+The Redis value will contain:
 
-### 8.3 Database Constraints
+- User ID.
+- Proposed email address.
+- Token metadata required for validation.
 
-- Token hashes must be unique.
-- User references must use foreign keys.
-- Expiration timestamps must be stored consistently.
-- Email uniqueness must remain enforced.
-- Token consumption must be atomic.
-- Appropriate indexes must support token lookup and cleanup.
-- Migrations must include rollback support.
+Only the token hash will be stored in Redis. The raw token will be
+generated securely and delivered to the user through the email adapter.
 
-The final schema should be reviewed against the existing migrations
-before implementation to avoid duplicating existing fields or tables.
+Both token types will use Redis TTLs for automatic expiration.
+
+### 8.2 Token Lifecycle
+
+The token lifecycle is:
+
+1. Generate a cryptographically secure random token.
+2. Send the raw token to the user through the email adapter.
+3. Hash the token.
+4. Store the token hash and required metadata in Redis with a TTL.
+5. When the user submits the token, hash the supplied value.
+6. Look up the corresponding Redis entry.
+7. Reject the request if the token does not exist or has expired.
+8. Perform the required account operation.
+9. Consume/delete the Redis token so it cannot be reused.
+
+Redis will be used only for temporary token state. Permanent account
+data remains in PostgreSQL.
+
+### 8.3 PostgreSQL Requirements
+
+No separate PostgreSQL tables are required for:
+
+- Password-reset tokens.
+- Email-change verification tokens.
+
+PostgreSQL will continue to enforce permanent account constraints,
+including email uniqueness and credential persistence.
+
+Any required changes to the existing `users` or `credentials` tables
+will be handled through normal database migrations.
 
 ## 9. Proposed API and gRPC Operations
 
@@ -469,13 +483,17 @@ Cover:
 
 - Profile retrieval and update against PostgreSQL.
 - Password change and credential persistence.
-- Forgot-password token persistence.
+- Forgot-password token storage and retrieval using Redis.
+- Successful password reset using a Redis token.
+- Invalid and expired Redis reset tokens.
+- Reuse of consumed Redis tokens.
 - Successful password reset.
 - Invalid and expired reset tokens.
 - Reuse of consumed tokens.
 - Session revocation after password changes.
 - Email-change verification.
 - Duplicate email rejection.
+- Email-change verification using Redis tokens.
 - Mailtrap adapter configuration and delivery behavior.
 
 Use a test email adapter for automated tests so that tests do not
@@ -496,13 +514,14 @@ Cover:
 
 ## 12. Implementation Phases
 
-### Phase A - Contracts and Database
+### Phase A - Contracts and Data Storage
 
 - Review existing Auth Service and protobuf conventions.
 - Define account-management request and response messages.
-- Design recovery and email-verification token persistence.
-- Add required database migrations.
-- Add repository methods and tests.
+- Design Redis storage for password-reset and email-verification tokens.
+- Define token TTLs and consumption behavior.
+- Add required PostgreSQL migrations only for permanent account fields.
+- Add Redis access methods and tests.
 
 ### Phase B - Profile Management
 
@@ -521,8 +540,9 @@ Cover:
 ### Phase D - Password Recovery
 
 - Implement reset-token generation and hashing.
+- Store reset-token data in Redis with a TTL.
 - Implement password-reset request handling.
-- Implement reset-token validation.
+- Implement Redis token validation and consumption.
 - Implement password replacement and session revocation.
 - Add expiration and replay-prevention tests.
 
@@ -537,9 +557,11 @@ Cover:
 ### Phase F - Email Change
 
 - Implement email-change requests.
-- Implement verification-token generation.
+- Implement verification-token generation and hashing.
+- Store verification-token data in Redis with a TTL.
+- Implement Redis token validation and consumption.
 - Implement email verification.
-- Enforce uniqueness and expiration.
+- Enforce email uniqueness and expiration.
 - Add integration tests.
 
 ### Phase G - Integration and Verification
