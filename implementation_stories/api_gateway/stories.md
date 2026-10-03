@@ -183,13 +183,11 @@ connie-title: API Gateway - User Stories
 
 ---
 
-## 7. Service Integration Stories 
+## 7. Service Integration Stories
 
 > Stories in this section depend on backend services that are still being built. Stories marked **Ready** include acceptance criteria and can be developed now. Blocked stories state the reason in place of acceptance criteria.
 
-US-7.1 (authentication) was split into three stories once `auth-service` implemented registration:
-
-
+US-7.1 (authentication) is split into smaller stories that follow the RPCs `auth-service` has implemented (`Register`, `Login`, `Logout`, `LogoutAll` as of `typescript-sdk` `v1.4.0`):
 
 ### US-7.1a - Register a new account through the gateway
 
@@ -201,13 +199,13 @@ US-7.1 (authentication) was split into three stories once `auth-service` impleme
 
 **Acceptance Criteria:**
 
-- `POST /auth/register` validates the request body (email, password) and calls `AuthService.Register` on `auth-service` over gRPC.
+- `POST /api/v1/auth/register` validates the request body (email, password) and calls `AuthService.Register` on `auth-service` over gRPC.
 - A successful registration returns `201 Created` with the user's ID, email, status, and creation time. The password is never returned or logged.
 - `auth-service` errors are mapped through `src/errors/grpc-to-http.ts`: an existing email returns `409 CONFLICT`, invalid input returns `400`, and an unavailable or timed-out service returns `503` or `504`.
-- The route applies an authentication rate-limit policy (e.g. `auth-login`) instead of the default policy.
+- The route applies its own authentication rate-limit policy (for example a new `auth-register` policy), so registration and login attempts are counted separately.
 - Every gRPC call has a deadline, and the `auth-service` address is read from the `AUTH_SERVICE_GRPC_TARGET` setting.
 
-**Notes:** Requires `typescript-sdk` `v1.2.1` or later, which contains the `gridx.auth.v1` contract (the gateway currently pins `v1.1.1`). `auth-service` serves Connect RPC, so the gateway client should use `@connectrpc/connect-node` with the gRPC transport.
+**Notes:** Requires `typescript-sdk` `v1.4.0` (the version `auth-service` uses), which contains the `gridx.auth.v1` contract. The gateway currently pins `v1.1.1`. `auth-service` serves Connect RPC, so the gateway client should use `@connectrpc/connect-node` with the gRPC transport.
 
 ---
 
@@ -226,19 +224,39 @@ US-7.1 (authentication) was split into three stories once `auth-service` impleme
 - The verified identity is attached to the request as a typed principal and forwarded to downstream gRPC calls as metadata. Identity values sent by the client are overwritten, never trusted.
 - Tests use locally generated keys and tokens, so they do not need a running `auth-service`.
 
-**Notes:** Tokens use EdDSA (Ed25519), as decided in `plans/api_gateway/02-authentication-and-authorization.md` and implemented in `auth-service`. Some plan files still mention RS256 (the plan README, `08-testing-and-delivery.md`, `09-folder-structure.md`, and line 68 of `02-authentication-and-authorization.md`) and should be updated. Algorithm names are case-sensitive: the gateway config must list `EdDSA` (it currently lists `EDDSA`). End-to-end testing with real tokens depends on US-7.1c.
+**Notes:** Tokens use EdDSA (Ed25519), as decided in `plans/api_gateway/02-authentication-and-authorization.md` and implemented in `auth-service`. Some plan files still mention RS256 (the plan README, `08-testing-and-delivery.md`, `09-folder-structure.md`, and line 68 of `02-authentication-and-authorization.md`) and should be updated. Algorithm names are case-sensitive: the gateway config must list `EdDSA` (it currently lists `EDDSA`). `auth-service` reads the caller's user ID from the `x-gridx-user-id` gRPC metadata header (used by `LogoutAll`), so the gateway must set that header from the verified token. End-to-end testing with real tokens uses the login route from US-7.1c.
 
 ---
 
-### US-7.1c - Log in and refresh sessions through the gateway
+### US-7.1c - Log in and log out through the gateway
 
 > **As** a registered user, <br>
-> **I want** to log in and refresh my session through the gateway, <br>
-> **so that** I can obtain and renew access tokens.
+> **I want** to log in and log out through the gateway, <br>
+> **so that** I can start and end my sessions from the web and mobile apps.
 
-*Maps to: `src/features/auth/*` (login, refresh, and logout routes), `src/transport/grpc/clients/auth.client.ts`*
+*Maps to: `src/features/auth/*` (login, logout, and logout-all routes), `src/transport/grpc/clients/auth.client.ts`*
 
-**Reason Blocked:** `auth-service` only implements `Register`. The `gridx/auth/v1/auth.proto` contract has no Login or Refresh RPC, and the service's token signer is not used by any RPC yet, so no access tokens are issued. This story unblocks when `auth-service` adds those RPCs and a new `typescript-sdk` version is released.
+**Acceptance Criteria:**
+
+- `POST /api/v1/auth/login` validates the body (email, password), calls `AuthService.Login`, and returns the access token, refresh token, and expiry. Tokens and passwords are never logged.
+- Wrong credentials return `401 UNAUTHENTICATED` with a message that does not reveal whether the email exists.
+- `POST /api/v1/auth/logout` calls `AuthService.Logout` with the refresh token and ends that session.
+- `POST /api/v1/auth/logout-all` requires a valid access token (US-7.1b) and calls `AuthService.LogoutAll` with the verified user ID in the `x-gridx-user-id` metadata header.
+- Login uses the `auth-login` rate-limit policy.
+
+**Notes:** Reuses the auth gRPC client from US-7.1a. `logout-all` depends on US-7.1b.
+
+---
+
+### US-7.1d - Refresh sessions through the gateway
+
+> **As** a logged-in user, <br>
+> **I want** to get a new access token with my refresh token, <br>
+> **so that** I stay logged in without entering my password again.
+
+*Maps to: `src/features/auth/*` (refresh route), `src/transport/grpc/clients/auth.client.ts`*
+
+**Reason Blocked:** `auth-service` has no Refresh RPC yet (`typescript-sdk` `v1.4.0` provides `Register`, `Login`, `Logout`, and `LogoutAll` only). This story unblocks when `auth-service` adds a Refresh RPC and a new SDK version is released.
 
 ---
 
@@ -250,7 +268,7 @@ US-7.1 (authentication) was split into three stories once `auth-service` impleme
 
 *Maps to: `src/plugins/authorization.ts`, `src/policies/route-auth.ts`, `src/policies/permissions.ts`*
 
-**Reason Blocked:** `auth-service` now exists and has role and permission tables, but its `AuthorizationService` (`GetUser`, `CheckPermission`) is not implemented, and no issued token carries role or permission claims yet. Depends on US-7.1b (verified identity) and US-7.1c (tokens being issued).
+**Reason Blocked:** `auth-service` now exists and has role and permission tables, but its `AuthorizationService` (`GetUser`, `CheckPermission`) is not implemented, and issued tokens do not carry role or permission claims yet. Depends on US-7.1b (verified identity).
 
 ---
 
@@ -342,8 +360,9 @@ US-7.1 (authentication) was split into three stories once `auth-service` impleme
 | US-6.2 | Request payload validation | `features/*/schemas.ts`, `common/validation.ts` | Ready |
 | US-7.1a | Register a new account through the gateway | `features/auth/*`, `transport/grpc/clients/auth.client.ts` | Ready |
 | US-7.1b | Verify access tokens at the gateway | `plugins/authentication.ts`, `policies/route-auth.ts` | Ready |
-| US-7.1c | Log in and refresh sessions through the gateway | `features/auth/*` | Blocked - no Login/Refresh RPC in auth-service |
-| US-7.2 | Enforce role-based access control | `plugins/authorization.ts`, `policies/` | Blocked - depends on US-7.1b and US-7.1c |
+| US-7.1c | Log in and log out through the gateway | `features/auth/*` | Ready (`logout-all` needs US-7.1b) |
+| US-7.1d | Refresh sessions through the gateway | `features/auth/*` | Blocked - no Refresh RPC in auth-service |
+| US-7.2 | Enforce role-based access control | `plugins/authorization.ts`, `policies/` | Blocked - no role/permission claims or CheckPermission RPC |
 | US-7.3 | Route order requests | `transport/grpc/clients/order.client.ts` | Blocked - protocol mismatch (Kafka vs gRPC) |
 | US-7.4 | Route trade requests | `transport/grpc/clients/trade.client.ts` | Blocked - protocol mismatch (Kafka vs gRPC) |
 | US-7.5 | Route wallet requests | `transport/grpc/clients/wallet.client.ts` | Blocked - no service repo exists |
