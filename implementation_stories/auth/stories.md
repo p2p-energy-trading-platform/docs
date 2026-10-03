@@ -6,11 +6,13 @@ connie-title: Auth Service - User Stories
 
 - **Epic:** Auth Service
 - **Repository:** [p2p-energy-trading-platform/auth-service](https://github.com/p2p-energy-trading-platform/auth-service)
-- **Plan:** [docs/plans/auth/09-implementation-plan.md](https://github.com/p2p-energy-trading-platform/docs/blob/main/plans/auth/09-implementation-plan.md)
+- **Plans:**
+  - [docs/plans/auth/09-implementation-plan.md](https://github.com/p2p-energy-trading-platform/docs/blob/main/plans/auth/09-implementation-plan.md)
+  - [docs/plans/auth/12-account-management-and-recovery.md](https://github.com/p2p-energy-trading-platform/docs/blob/main/plans/auth/12-account-management-and-recovery.md)
 
-> This document breaks the Auth Service's 10-phase implementation plan down into component-level user stories, grouped by phase. Each story is checked against the actual `auth-service` repository, with related files cited under `Maps to`. Implementation status is distinguished from test verification and cross-service integration. Stories that remain dependent on external decisions or other repositories are listed separately.
+> This document breaks the Auth Service implementation plans down into component-level user stories, grouped by implementation area. Each story is checked against the actual `auth-service` repository, with related files cited under `Maps to`. Implementation status is distinguished from test verification and cross-service integration. Stories that remain dependent on external decisions or other repositories are listed separately.
 
-**Current repo state at a glance:** The foundational service components, PostgreSQL and Redis connectivity, health checks, structured logging, and cryptographic utilities are implemented. Database migrations now exist for users, credentials, sessions, roles, permissions, and KYC-related tables. Registration, login, logout, and logout-all flows have been implemented and connected to the gRPC authentication service. Session persistence uses PostgreSQL with Redis caching. JWT signing and JWKS functionality are present. However, dedicated end-to-end verification, refresh-token rotation, complete authorization checks, and API Gateway authentication integration remain outstanding or require further verification.
+**Current repo state at a glance:** The foundational service components, PostgreSQL and Redis connectivity, health checks, structured logging, and cryptographic utilities are implemented. Database migrations now exist for users, credentials, sessions, roles, permissions, and KYC-related tables. Registration, login, logout, and logout-all flows have been implemented and connected to the gRPC authentication service. Session persistence uses PostgreSQL with Redis caching. JWT signing and JWKS functionality are present. However, dedicated end-to-end verification, refresh-token rotation, complete authorization checks, and API Gateway authentication integration remain outstanding or require further verification. Account management and recovery capabilities covered by the dedicated account-management plan are not yet implemented.
 
 ---
 
@@ -334,6 +336,357 @@ connie-title: Auth Service - User Stories
 
 ---
 
+# 9. Account Management & Recovery
+
+> **Plan:** [docs/plans/auth/12-account-management-and-recovery.md](https://github.com/p2p-energy-trading-platform/docs/blob/main/plans/auth/12-account-management-and-recovery.md)
+
+> This section covers account-management and recovery capabilities that extend the existing authentication foundation. All account and credential business logic remains within the Auth Service. Email delivery is abstracted so the temporary Mailtrap implementation can later be replaced by a dedicated Notification Service.
+
+---
+
+## 9.1 Phase A — Contracts and Token Storage
+
+### US-9.1 - Define account-management gRPC contracts
+
+> **As** an Auth Service client,  
+> **I want** gRPC contracts for account management and recovery operations,  
+> **so that** clients can interact with profile, password, and email-management functionality through stable service interfaces.
+
+**Maps to:** `protobuf` repository, Auth Service gRPC transport, TypeScript SDK
+
+**Acceptance Criteria:**
+
+- gRPC contracts are defined for:
+  - `GetProfile`
+  - `UpdateProfile`
+  - `ChangePassword`
+  - `RequestPasswordReset`
+  - `ResetPassword`
+  - `RequestEmailChange`
+  - `VerifyEmailChange`
+- Authentication requirements are clearly defined for each operation.
+- Request and response messages contain only the fields required by the operation.
+- Generated TypeScript types are available through the TypeScript SDK.
+- Contracts remain backward-compatible with existing authentication operations.
+
+**Status:** Not started.
+
+---
+
+### US-9.2 - Implement temporary authentication token storage
+
+> **As** the Auth Service,  
+> **I want** secure temporary storage for password-reset and email-verification tokens,  
+> **so that** recovery and verification tokens expire automatically and cannot be reused indefinitely.
+
+**Maps to:** `src/plugins/redis.ts`, authentication/recovery features, Redis configuration
+
+**Acceptance Criteria:**
+
+- Password-reset tokens are generated using a cryptographically secure random source.
+- Email-verification tokens are generated using a cryptographically secure random source.
+- Only token hashes are stored in Redis; raw tokens are never persisted.
+- Password-reset tokens use the configured password-reset TTL.
+- Email-verification tokens use the configured email-verification TTL.
+- Submitted tokens are hashed before Redis lookup.
+- Expired, missing, or already-consumed tokens are rejected.
+- Tokens are consumed after successful use and cannot be reused.
+- Sensitive token values are never written to application logs.
+
+**Status:** Not started.
+
+---
+
+## 9.2 Phase B — Profile Management
+
+### US-9.3 - Retrieve authenticated user's profile
+
+> **As** an authenticated user,  
+> **I want** to retrieve my account profile,  
+> **so that** I can view the account information associated with my authenticated identity.
+
+**Maps to:** `src/features/account/get-profile.ts`, users repository, gRPC account service
+
+**Acceptance Criteria:**
+
+- Only authenticated users can access the operation.
+- User identity is obtained from trusted authentication context rather than a client-supplied user ID.
+- The returned profile includes the appropriate account information such as user ID, name, email, and account status.
+- Password hashes, refresh tokens, access tokens, and other secrets are never returned.
+- A user cannot retrieve another user's profile by supplying a different user ID.
+- The operation returns a consistent gRPC response for valid authenticated requests.
+
+**Status:** Not started.
+
+---
+
+### US-9.4 - Update user's name/profile
+
+> **As** an authenticated user,  
+> **I want** to update my profile information,  
+> **so that** my account details remain accurate.
+
+**Maps to:** `src/features/account/update-profile.ts`, users repository, gRPC account service
+
+**Acceptance Criteria:**
+
+- Only authenticated users can update their own profile.
+- First name and last name can be updated.
+- Input fields are validated before persistence.
+- The authenticated user's identity comes from trusted authentication context.
+- A user cannot update another user's profile.
+- Changes are persisted in PostgreSQL.
+- The updated profile is returned after a successful operation.
+- Password hashes, tokens, and other secrets are never returned.
+
+**Status:** Not started.
+
+---
+
+## 9.3 Phase C — Password Change
+
+### US-9.5 - Change password
+
+> **As** an authenticated user,  
+> **I want** to change my password using my current password,  
+> **so that** I can maintain control over my account credentials.
+
+**Maps to:** `src/features/account/change-password.ts`, `src/infrastructure/crypto/password-hasher.ts`, credentials repository
+
+**Acceptance Criteria:**
+
+- The operation requires authentication.
+- The current password is required.
+- The current password is verified using the existing Argon2id password-hashing utility.
+- The new password is validated against the configured password policy.
+- The new password is hashed using Argon2id before persistence.
+- The previous password hash is replaced only after successful validation.
+- The current user cannot change another user's password.
+- Existing sessions are revoked after a successful password change.
+- Passwords and password hashes are never logged or returned in responses.
+
+**Status:** Not started.
+
+---
+
+### US-9.6 - Request password reset
+
+> **As** a user who cannot access my password,  
+> **I want** to request a password-reset link using my email address,  
+> **so that** I can recover access to my account.
+
+**Maps to:** `src/features/authentication/request-password-reset.ts`, Redis token storage, email client
+
+**Acceptance Criteria:**
+
+- The user submits an email address to request recovery.
+- Email input is normalized before lookup.
+- A cryptographically secure reset token is generated.
+- Only a hash of the reset token is stored in Redis.
+- The token has a configurable expiration time.
+- The raw reset token is delivered through the configured email client.
+- The response does not reveal whether the submitted email exists.
+- Password-reset requests are rate-limited appropriately.
+- Reset tokens and complete reset links are never written to application logs.
+
+**Status:** Not started.
+
+---
+
+### US-9.7 - Reset password using recovery token
+
+> **As** a user with a valid recovery token,  
+> **I want** to set a new password,  
+> **so that** I can regain access to my account without knowing my previous password.
+
+**Maps to:** `src/features/authentication/reset-password.ts`, Redis token storage, credentials repository, password hasher
+
+**Acceptance Criteria:**
+
+- The submitted recovery token is hashed before Redis lookup.
+- Missing or expired tokens are rejected.
+- The token must resolve to a valid user account.
+- The new password is validated against the configured password policy.
+- The new password is hashed using Argon2id.
+- The user's stored password hash is updated only after successful validation.
+- The recovery token is consumed after successful password reset.
+- A consumed token cannot be used again.
+- All existing sessions are revoked after a successful password reset.
+- Passwords, tokens, and password-reset links are never logged or returned.
+
+**Status:** Not started.
+
+---
+
+### US-9.8 - Revoke sessions after sensitive password operations
+
+> **As** the Auth Service,  
+> **I want** password changes and password resets to revoke existing sessions,  
+> **so that** previously authenticated devices cannot continue using credentials that may no longer be trusted.
+
+**Maps to:** existing session-revocation functionality under `src/features/sessions/` and `src/features/authentication/logout-all.ts`
+
+**Acceptance Criteria:**
+
+- Successful authenticated password changes revoke the user's active sessions.
+- Successful password resets revoke the user's active sessions.
+- Existing session-revocation functionality is reused where appropriate rather than duplicating session logic.
+- Revocation is persisted in PostgreSQL.
+- Redis session/cache invalidation follows the existing session-revocation behavior.
+- Failed password changes and failed password resets do not revoke sessions unnecessarily.
+- Session-revocation failures are handled consistently with the Auth Service's security/error-handling policy.
+
+**Status:** Not started. Existing logout-all/session-revocation functionality can be reused and extended for these sensitive account operations.
+
+---
+
+## 9.4 Phase D — Password Recovery
+
+### US-9.9 - Implement provider-independent email client abstraction
+
+> **As** the Auth Service,  
+> **I want** an email client abstraction,  
+> **so that** password recovery and email verification do not depend directly on a specific email provider.
+
+**Maps to:** `src/features/email/email-client.ts`
+
+**Acceptance Criteria:**
+
+- An email client interface is defined independently of Mailtrap.
+- The interface supports password-reset emails.
+- The interface supports email-change verification emails.
+- Business logic depends on the abstraction rather than provider-specific SMTP code.
+- Email credentials are never hard-coded.
+- Sensitive token values are not logged by the abstraction.
+
+**Status:** Not started.
+
+---
+
+### US-9.10 - Implement temporary Mailtrap email adapter
+
+> **As** a developer,  
+> **I want** a Mailtrap-backed email implementation for development and testing,  
+> **so that** account recovery and email verification can be tested without production email infrastructure.
+
+**Maps to:** `src/infrastructure/email/mailtrap-email-client.ts`, email configuration
+
+**Acceptance Criteria:**
+
+- Mailtrap SMTP configuration is loaded from environment variables.
+- Sender name and sender address are configurable.
+- Password-reset emails can be sent through the adapter.
+- Email-change verification emails can be sent through the adapter.
+- Mailtrap credentials are never stored in source code.
+- Email credentials and sensitive tokens are never written to logs.
+- The Auth Service can replace the Mailtrap implementation with another provider without changing account business logic.
+
+**Status:** Not started.
+
+---
+
+## 9.5 Phase F — Email Change
+
+### US-9.11 - Request email address change
+
+> **As** an authenticated user,  
+> **I want** to request a change to my email address,  
+> **so that** I can keep my account associated with an up-to-date email address.
+
+**Maps to:** `src/features/account/update-email.ts`, Redis token storage, email client
+
+**Acceptance Criteria:**
+
+- The operation requires authentication.
+- The proposed email address is normalized and validated.
+- The proposed email must not already belong to another user.
+- The current email address remains unchanged until verification succeeds.
+- A cryptographically secure verification token is generated.
+- Only a hash of the verification token is stored in Redis.
+- The token is associated with the authenticated user and proposed email address.
+- The token has a configurable expiration time.
+- A verification email is sent using the email client abstraction.
+- Raw tokens and complete verification links are never logged.
+
+**Status:** Not started.
+
+---
+
+### US-9.12 - Verify and apply email address change
+
+> **As** a user who has requested an email change,  
+> **I want** to verify the new email address using the verification token,  
+> **so that** my account email is changed only after ownership of the new address is confirmed.
+
+**Maps to:** `src/features/authentication/verify-email-change.ts`, Redis token storage, users repository
+
+**Acceptance Criteria:**
+
+- The submitted verification token is hashed before Redis lookup.
+- Missing or expired tokens are rejected.
+- The token resolves to the correct user and proposed email address.
+- The proposed email is checked for uniqueness before persistence.
+- The user's email address is updated only after successful verification.
+- The verification token is consumed after successful use.
+- A consumed token cannot be reused.
+- The final account email is persisted in PostgreSQL.
+- The verification process does not expose unrelated account information.
+- Sensitive tokens are never logged or returned.
+
+**Status:** Not started.
+
+---
+
+## 9.6 Phase G — SDK and Integration
+
+### US-9.13 - Update TypeScript SDK for account operations
+
+> **As** an Auth Service client developer,  
+> **I want** generated TypeScript SDK support for account-management and recovery operations,  
+> **so that** other services can consume the new gRPC APIs without manually maintaining contracts.
+
+**Maps to:** `typescript-sdk` repository and generated protobuf contracts
+
+**Acceptance Criteria:**
+
+- Account-management gRPC contracts are generated into the TypeScript SDK.
+- Request and response types are available to SDK consumers.
+- Existing authentication SDK functionality remains compatible.
+- SDK generation completes successfully using the repository's existing generation process.
+- The updated SDK can be consumed by Auth Service clients.
+
+**Status:** Not started.
+
+---
+
+### US-9.14 - Integration and security testing for account management and recovery
+
+> **As** an SRE/QA engineer,  
+> **I want** integration and security tests for account management and recovery,  
+> **so that** sensitive account operations are verified before being used by other services.
+
+**Maps to:** Auth Service test suite, account-management features, Redis, PostgreSQL, email adapter
+
+**Acceptance Criteria:**
+
+- Profile retrieval is tested with authenticated and unauthenticated requests.
+- Profile updates are tested for validation and user-isolation behavior.
+- Password changes verify the current password and reject invalid credentials.
+- Password-reset requests do not reveal whether an email exists.
+- Password-reset tokens expire and cannot be reused.
+- Successful password reset revokes existing sessions.
+- Email-change tokens expire and cannot be reused.
+- Email uniqueness is enforced during email change.
+- Email-change verification updates the email only after successful token validation.
+- Redis token storage and expiration behavior are tested.
+- Mailtrap/email-client integration is tested using the configured development environment.
+- Sensitive values are not present in application logs.
+- Existing authentication functionality remains unaffected by the new account-management features.
+
+**Status:** Not started.
+
+---
+
 ## Summary Table
 
 | ID | Story | Phase | Status |
@@ -356,5 +709,17 @@ connie-title: Auth Service - User Stories
 | US-8.1 | Gateway JWT verification integration | 7 | Not implemented — gateway runtime integration outstanding |
 | US-8.2 | SSO / OIDC providers | 8 | Blocked — local authentication flow must be stabilized |
 | US-8.3 | KYC provider integration | 9 | Blocked — provider selection required |
-
----
+| US-9.1 | Define account-management gRPC contracts | Account Management & Recovery | Not started |
+| US-9.2 | Implement temporary authentication token storage | Account Management & Recovery | Not started |
+| US-9.3 | Retrieve authenticated user's profile | Account Management & Recovery | Not started |
+| US-9.4 | Update user's name/profile | Account Management & Recovery | Not started |
+| US-9.5 | Change password | Account Management & Recovery | Not started |
+| US-9.6 | Request password reset | Account Management & Recovery | Not started |
+| US-9.7 | Reset password using recovery token | Account Management & Recovery | Not started |
+| US-9.8 | Revoke sessions after sensitive password operations | Account Management & Recovery | Not started — reuse existing session revocation |
+| US-9.9 | Implement provider-independent email client abstraction | Account Management & Recovery | Not started |
+| US-9.10 | Implement temporary Mailtrap email adapter | Account Management & Recovery | Not started |
+| US-9.11 | Request email address change | Account Management & Recovery | Not started |
+| US-9.12 | Verify and apply email address change | Account Management & Recovery | Not started |
+| US-9.13 | Update TypeScript SDK for account operations | Account Management & Recovery | Not started |
+| US-9.14 | Integration and security testing for account management and recovery | Account Management & Recovery | Not started |
