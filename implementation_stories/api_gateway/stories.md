@@ -7,7 +7,7 @@ connie-title: API Gateway - User Stories
 * **Epic:** API Gateway
 * **Repository:** [p2p-energy-trading-platform/api-gateway](https://github.com/p2p-energy-trading-platform/api-gateway)
 
-> This document breaks the API Gateway epic down into component-level user stories, grouped by functional area. Each story maps to a specific part of the `api-gateway` repository structure and includes acceptance criteria for Jira ticket creation. Stories in Section 6 are currently blocked and are listed separately with reasons instead of acceptance criteria.
+> This document breaks the API Gateway epic down into component-level user stories, grouped by functional area. Each story maps to a specific part of the `api-gateway` repository structure and includes acceptance criteria for Jira ticket creation. Section 7 covers stories that depend on other services; blocked stories there list reasons instead of acceptance criteria.
 
 ---
 
@@ -183,19 +183,62 @@ connie-title: API Gateway - User Stories
 
 ---
 
-## 7. Blocked User Stories (Cannot Be Developed Yet)
+## 7. Service Integration Stories 
 
-> Each story below is written but cannot be implemented or integration-tested yet. Reasons are stated in place of acceptance criteria.
+> Stories in this section depend on backend services that are still being built. Stories marked **Ready** include acceptance criteria and can be developed now. Blocked stories state the reason in place of acceptance criteria.
 
-### US-7.1 - Authenticate requests at the gateway
+US-7.1 (authentication) was split into three stories once `auth-service` implemented registration:
 
-> **As** a client, <br>
-> **I want** to authenticate at the gateway, <br>
-> **so that** only verified users reach backend services.
 
-*Maps to: `src/plugins/authentication.ts`, `src/features/auth/*`, `src/types/authentication.ts`*
 
-**Reason Blocked:** `auth-service` exists as a repository but has only 1 commit and a README stub — no authentication logic is implemented. The gateway has nothing real to validate credentials against yet.
+### US-7.1a - Register a new account through the gateway
+
+> **As** a new user, <br>
+> **I want** to create an account through the gateway, <br>
+> **so that** the web and mobile apps can register users without calling `auth-service` directly.
+
+*Maps to: `src/features/auth/routes.ts`, `src/features/auth/schemas.ts`, `src/features/auth/handler.ts`, `src/features/auth/mapper.ts`, `src/transport/grpc/clients/auth.client.ts`, `src/transport/grpc/deadlines.ts`*
+
+**Acceptance Criteria:**
+
+- `POST /auth/register` validates the request body (email, password) and calls `AuthService.Register` on `auth-service` over gRPC.
+- A successful registration returns `201 Created` with the user's ID, email, status, and creation time. The password is never returned or logged.
+- `auth-service` errors are mapped through `src/errors/grpc-to-http.ts`: an existing email returns `409 CONFLICT`, invalid input returns `400`, and an unavailable or timed-out service returns `503` or `504`.
+- The route applies an authentication rate-limit policy (e.g. `auth-login`) instead of the default policy.
+- Every gRPC call has a deadline, and the `auth-service` address is read from the `AUTH_SERVICE_GRPC_TARGET` setting.
+
+**Notes:** Requires `typescript-sdk` `v1.2.1` or later, which contains the `gridx.auth.v1` contract (the gateway currently pins `v1.1.1`). `auth-service` serves Connect RPC, so the gateway client should use `@connectrpc/connect-node` with the gRPC transport.
+
+---
+
+### US-7.1b - Verify access tokens at the gateway
+
+> **As** the platform, <br>
+> **I want** the gateway to verify access tokens issued by `auth-service`, <br>
+> **so that** only authenticated users reach protected routes.
+
+*Maps to: `src/plugins/authentication.ts`, `src/types/authentication.ts`, `src/policies/route-auth.ts`, `src/transport/grpc/metadata.ts`*
+
+**Acceptance Criteria:**
+
+- Access tokens are verified with `auth-service` public keys fetched from its JWKS endpoint (`/.well-known/jwks.json`) and cached. Signature, issuer, audience, expiry, and algorithm are all checked.
+- Protected routes return `401 UNAUTHENTICATED` when the token is missing, expired, or invalid. Public routes work without a token.
+- The verified identity is attached to the request as a typed principal and forwarded to downstream gRPC calls as metadata. Identity values sent by the client are overwritten, never trusted.
+- Tests use locally generated keys and tokens, so they do not need a running `auth-service`.
+
+**Notes:** Tokens use EdDSA (Ed25519), as decided in `plans/api_gateway/02-authentication-and-authorization.md` and implemented in `auth-service`. Some plan files still mention RS256 (the plan README, `08-testing-and-delivery.md`, `09-folder-structure.md`, and line 68 of `02-authentication-and-authorization.md`) and should be updated. Algorithm names are case-sensitive: the gateway config must list `EdDSA` (it currently lists `EDDSA`). End-to-end testing with real tokens depends on US-7.1c.
+
+---
+
+### US-7.1c - Log in and refresh sessions through the gateway
+
+> **As** a registered user, <br>
+> **I want** to log in and refresh my session through the gateway, <br>
+> **so that** I can obtain and renew access tokens.
+
+*Maps to: `src/features/auth/*` (login, refresh, and logout routes), `src/transport/grpc/clients/auth.client.ts`*
+
+**Reason Blocked:** `auth-service` only implements `Register`. The `gridx/auth/v1/auth.proto` contract has no Login or Refresh RPC, and the service's token signer is not used by any RPC yet, so no access tokens are issued. This story unblocks when `auth-service` adds those RPCs and a new `typescript-sdk` version is released.
 
 ---
 
@@ -207,7 +250,7 @@ connie-title: API Gateway - User Stories
 
 *Maps to: `src/plugins/authorization.ts`, `src/policies/route-auth.ts`, `src/policies/permissions.ts`*
 
-**Reason Blocked:** Role and permission claims are issued by `auth-service`, which doesn't exist yet (see US-7.1). Without real claims to check, there is no data to enforce rules against.
+**Reason Blocked:** `auth-service` now exists and has role and permission tables, but its `AuthorizationService` (`GetUser`, `CheckPermission`) is not implemented, and no issued token carries role or permission claims yet. Depends on US-7.1b (verified identity) and US-7.1c (tokens being issued).
 
 ---
 
@@ -297,8 +340,10 @@ connie-title: API Gateway - User Stories
 | US-5.2 | WebSocket connection lifecycle | `plugins/websocket.ts`, `websocket/` | Ready |
 | US-6.1 | Consistent error schema and mapping layer | `errors/` | Ready |
 | US-6.2 | Request payload validation | `features/*/schemas.ts`, `common/validation.ts` | Ready |
-| US-7.1 | Authenticate requests at the gateway | `plugins/authentication.ts`, `features/auth/*` | Blocked - auth-service not implemented |
-| US-7.2 | Enforce role-based access control | `plugins/authorization.ts`, `policies/` | Blocked - depends on US-7.1 |
+| US-7.1a | Register a new account through the gateway | `features/auth/*`, `transport/grpc/clients/auth.client.ts` | Ready |
+| US-7.1b | Verify access tokens at the gateway | `plugins/authentication.ts`, `policies/route-auth.ts` | Ready |
+| US-7.1c | Log in and refresh sessions through the gateway | `features/auth/*` | Blocked - no Login/Refresh RPC in auth-service |
+| US-7.2 | Enforce role-based access control | `plugins/authorization.ts`, `policies/` | Blocked - depends on US-7.1b and US-7.1c |
 | US-7.3 | Route order requests | `transport/grpc/clients/order.client.ts` | Blocked - protocol mismatch (Kafka vs gRPC) |
 | US-7.4 | Route trade requests | `transport/grpc/clients/trade.client.ts` | Blocked - protocol mismatch (Kafka vs gRPC) |
 | US-7.5 | Route wallet requests | `transport/grpc/clients/wallet.client.ts` | Blocked - no service repo exists |
