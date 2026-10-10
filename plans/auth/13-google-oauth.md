@@ -1,3 +1,7 @@
+---
+connie-title: Google OAuth Sign-In
+---
+
 # Google sign-in (OAuth 2.0 / OpenID Connect) for GridX
 
 ## Context
