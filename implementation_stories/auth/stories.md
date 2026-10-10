@@ -687,6 +687,46 @@ connie-title: Auth Service - User Stories
 
 ---
 
+# 10. Social Sign-In
+
+> **Plan:** [docs/plans/auth/13-google-oauth.md](https://github.com/p2p-energy-trading-platform/docs/blob/main/plans/auth/13-google-oauth.md)
+>
+> This section covers signing in with an external identity provider, starting with Google. Google identity verification and user creation or linking remain inside the Auth Service. The API Gateway runs the OAuth redirects and issues the same session cookies as password login.
+
+---
+
+### US-10.1 - Sign in and sign up with Google
+
+> **As** a user,  
+> **I want** to sign in or create my account with my Google account,  
+> **so that** I can access the platform without creating and remembering a separate password.
+
+**Maps to:**
+
+- `protobuf`: new `LoginWithGoogle` RPC in `gridx/auth/v1/auth.proto`
+- `auth-service`: `user_identities` migration, `src/infrastructure/oauth/google-client.ts`, `src/features/authentication/login-with-google.ts`, users repository, gRPC auth service
+- `api-gateway`: `GET /api/v1/auth/google/start` and `GET /api/v1/auth/google/callback` in `src/features/auth/`, auth gRPC client, `auth-oauth` rate-limit policy
+- `frontend-web`: Google button on the sign-in and Create Account forms
+
+**Acceptance Criteria:**
+
+- The OAuth 2.0 Authorization Code flow with PKCE is used; Google tokens and the client secret never reach the browser.
+- The OAuth `state` is bound to the browser and stored in Redis for single use with a short expiry; a missing, mismatched, or replayed `state` is rejected.
+- The Google ID token is verified for signature, issuer, audience, expiry, and nonce, and sign-in is rejected when the Google email is not verified.
+- A new Google user is created as `ACTIVE` and email-verified, with the name taken from the Google profile, and continues sign-up at the KYC step.
+- When an account with the same email already exists, the Google identity is linked to it, and a `PENDING` account is marked as email-verified.
+- A returning Google user is matched by Google account ID, so sign-in still works if their email changes later.
+- `SUSPENDED` and `DISABLED` accounts cannot sign in with Google.
+- Successful sign-in sets the same `gridx_access` and `gridx_refresh` cookies as password login.
+- The post-login redirect only accepts relative paths, preventing open redirects.
+- Failed or cancelled sign-in returns the user to the sign-in page with an error message.
+- A Google-only user can add a password through the existing password-reset flow.
+- Unit tests cover the use case with a faked Google client, and gateway integration tests cover the start and callback routes.
+
+**Status:** Not started.
+
+---
+
 ## Summary Table
 
 | ID | Story | Phase | Status |
@@ -723,3 +763,4 @@ connie-title: Auth Service - User Stories
 | US-9.12 | Verify and apply email address change | Account Management & Recovery | Not started |
 | US-9.13 | Update TypeScript SDK for account operations | Account Management & Recovery | Not started |
 | US-9.14 | Integration and security testing for account management and recovery | Account Management & Recovery | Not started |
+| US-10.1 | Sign in and sign up with Google | Social Sign-In | Not started |
