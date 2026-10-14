@@ -146,26 +146,54 @@ auth-service/
 A simple implementation is enough for DEWA app. This folder structure is subject to changes
 
 ```text
-dewa-mock/
-├── public/                      # Static UI served by @fastify/static
-│   ├── index.html               # Customer portal UI for approvals
-│   ├── app.js                   # UI logic for fetching & approving requests
-│   └── styles.css               # Portal styling
-│
-├── src/
-│   ├── app.ts                  # Fastify instance, plugins, and static routes
-│   ├── server.ts               # Server entry point and port listener
-│   ├── config.ts               # Port and environment configurations
-│   ├── types.ts                # LinkRequest interface and status types
-│   ├── store.ts                # In-memory array store for pending requests
-│   └── routes/
-│       └── link-requests.ts    # API endpoints for link requests
-│
-├── tests/
-│   └── link-requests.test.ts   # Integration tests for API endpoints
-│
-├── .env.example
+.
+├── commitlint.config.js
+├── components.json
+├── eslint.config.js
 ├── package.json
+├── package-lock.json
+├── prettier.config.js
+├── README.md
+├── server                           # <-- NEW: Nitro backend server directory for mock API endpoints
+│   ├── api                          # <-- Nitro API routes automatically mapped by file system
+│   │   └── link-requests
+│   │       ├── index.ts             # Handles POST (create link request) & GET (list requests)
+│   │       └── [requestId]
+│   │           ├── index.ts         # Handles GET /api/link-requests/:requestId (status check)
+│   │           ├── approve.ts       # Handles POST /api/link-requests/:requestId/approve
+│   │           └── reject.ts        # Handles POST /api/link-requests/:requestId/reject
+│   └── state
+│       └── memoryStore.ts           # In-memory pendingRequests[] array and helper functions
+├── src
+│   ├── components
+│   ├── data
+│   │   └── linkRequests.ts
+│   ├── env.ts
+│   ├── integrations
+│   │   └── tanstack-query
+│   │       ├── devtools.tsx
+│   │       └── root-provider.tsx
+│   ├── lib
+│   │   └── utils.ts
+│   ├── router.tsx
+│   ├── routes
+│   │   ├── index.tsx
+│   │   ├── requests
+│   │   │   └── $requestId.tsx
+│   │   └── __root.tsx
+│   ├── routeTree.gen.ts
+│   ├── services
+│   │   └── dewaApi.ts
+│   ├── styles
+│   │   ├── adapter.css
+│   │   └── token.css
+│   ├── styles.css
+│   └── types
+│       └── dewa.ts
+├── tests
+│   └── link-requests.test.ts
 ├── tsconfig.json
-└── README.md
+├── tsr.config.json
+├── vite.config.ts
+└── vitest.config.ts
 ```
