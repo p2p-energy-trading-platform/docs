@@ -68,7 +68,6 @@ In case, the platform marks it as expired but the user updates it as successful 
 - Check if the request id exists, if it does not trigger the prcoess again by sending a new request.
 - If the request id exists, then trigger the polling logic again
 
-
 ## Recommended Folder Structure Additions
 
 To cleanly accommodate the registration workflow, client calls to DEWA, and polling logic within the existing Go microservice layout, we should introduce a new `registration`/ package inside `internal/`
@@ -87,11 +86,9 @@ iot-ingestion/
 │   │       ...
 ```
 
-
 ## gRPC methods
 
 The IoT service needs to expose the following methods so other services can call and use them. The following methods are primarily related to iot smart meter registration in the system.
-
 
 ```proto
 service DeviceRegistrationService {
@@ -153,6 +150,3 @@ message ReverifyResponse {
 ```
 
 **NOTE**: In future more methods will be needed as we go on integrating the functionalities in the frontend inorder to show visual information or additional actions. For now the above are enough!
-
-
-
