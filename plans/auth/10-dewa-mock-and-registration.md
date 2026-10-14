@@ -18,16 +18,13 @@ association request.
 
   Concern         Technology
   --------------- ------------------------------------------------------
-  Runtime         Node.js
-  Language        TypeScript
-  Backend         Fastify
-  Frontend        Minimal React/TypeScript or simple Fastify-served UI
+  Techstack       Tanstack start + nitro
   State           In-memory initially
   Communication   HTTP/JSON
 
 ## Mock UI
 
-The UI can contain a single page:
+The UI can contain a single page with list of requests:
 
 ``` text
 DEWA Mock Customer Portal
@@ -58,6 +55,14 @@ POST /api/link-requests/:requestId/approve
 POST /api/link-requests/:requestId/reject
 ```
 
+| Method | Endpoint | Description | Request / Response Payload Example |
+| :--- | :--- | :--- | :--- |
+| **POST** | `/api/link-requests` | Called by your platform when a user initiates a meter claim. | **Req:** `{"registrationId": "REG-123", "meterId": "METER-001", "userReference": "USER-123"}`<br>**Res:** `{"status": "PENDING", "message": "Link request created"}` |
+| **GET** | `/api/link-requests` | Called by the DEWA Mock Customer Portal UI to list all requests. | **Res:** `[{"registrationId": "REG-123", "meterId": "METER-001", "status": "PENDING", ...}]` |
+| **GET** | `/api/link-requests/:requestId` | Called by your platform to poll or check the approval status. | **Res:** `{"registrationId": "REG-123", "meterId": "METER-001", "status": "APPROVED"}` |
+| **POST** | `/api/link-requests/:requestId/approve` | Triggered when the customer clicks `[ Approve ]` in the DEWA portal. | **Res:** `{"success": true, "status": "APPROVED"}` |
+| **POST** | `/api/link-requests/:requestId/reject` | Triggered when the customer clicks `[ Reject ]` in the DEWA portal. | **Res:** `{"success": true, "status": "REJECTED"}` |
+
 The platform communicates with these endpoints over HTTP.
 
 ## In-Memory State
@@ -70,10 +75,10 @@ pendingRequests[]
 
 in RAM (memory).
 
-This is acceptable because the DEWA application is a demonstration-only
+This is acceptable (for now) because the DEWA application is a demonstration-only
 external simulation.
 
-A restart can clear pending requests.
+**NOTE**: A restart can clear pending requests for now (acceptable for now)
 
 ## Registration Flow
 
@@ -109,7 +114,7 @@ Web/Mobile App
 API Gateway
   |
   v
-Registration/Asset logic
+Iot Ingestion & Dispatch Service
 ```
 
 The platform creates a `registrationId`.
@@ -211,6 +216,14 @@ REGISTERED
 ```
 
 A separate `registrationId` should identify each registration attempt.
+
+## Detailed request flow
+
+1. Client Initiation: The user submits a meter claim from the frontend web/mobile application to the API Gateway. 
+1. Gateway Verification & Routing: The API Gateway authenticates the request through the Auth Service and routes it internally to the backend registration/IoT service.
+1. Internal State & Outbound Call: The backend service generates a unique registrationId, persists the initial state as `DEWA_APPROVAL_PENDING`, and dispatches an HTTP `POST /api/link-requests` payload (containing `registrationId`, `meterId`, and `userReference`) to the external DEWA Mock application. 
+1. External Approval: The user approves the request inside the DEWA Mock Customer Portal UI, updating its internal status to `APPROVED`. 
+1. Status Verification & Finalization: The platform checks the request status via `GET /api/link-requests/:requestId`. Once confirmed, the platform transitions the registration state machine to APPROVED and then REGISTERED, locking in the `PRIMARY_OWNER` association within the platform database.
 
 ## Future Cryptographic Registration
 
