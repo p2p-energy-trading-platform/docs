@@ -13,3 +13,5 @@ The iot simulation will receive an actuation command that it must process during
 **NOTE**: This must also sync the in memory house state according to the sqlite database.
 
 The additional info related to schema and mqtt topics are referenced in [iot registration doc](../iot-ingestion-dispatch/13-iot-service-simulation-connection.md)
+
+**NOTE**: Later in the future, this path will also be used for cryptographical signing and sharing of keys for even more security.
