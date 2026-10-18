@@ -39,18 +39,12 @@ Upon receiving the ACTIVATE_METER command:
         "data": {
             "house_id": "HOUSE-456",
             "smart_meter_id": "METER-123",
-            "smart_meter_info": {
-            "model": "SmartVolt-X1",
-            "firmware_version": "v2.4.1",
-            "installation_date": "2026-10-18"
-            },
-            "extra_info": {
-            "grid_zone": "Colombo-North",
-            "max_capacity_amps": 60
-            }
+            "grid_id": "Grid01",
         }
     }
     ```
+
+**NOTE**: The payload structure is subject to change. The above is just an example!
 
 ### 3. Core Processing
 
