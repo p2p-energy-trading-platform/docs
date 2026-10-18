@@ -12,4 +12,3 @@ There must be a script or trigger that initializes, validates this before the wh
 
 1. Actual Source of truth of grids: This exists in `iot-simulation` under `config/grids.yaml`
 1. Our system's source of truth of grids: `iot-ingestion-dispatch` tables
-

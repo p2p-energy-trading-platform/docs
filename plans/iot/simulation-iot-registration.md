@@ -8,7 +8,7 @@ There is a frontend client to iot service and DEWA mock app registration flow. T
 
 ## The actuation command trigger
 
-The iot simulation will receive an actuation command that it must process during the loop and update the specific smart meter / house `is_active` status to true. It must also publish the registration payload back over mqtt to iot service. This will allow the iot service to register all the house details. 
+The iot simulation will receive an actuation command that it must process during the loop and update the specific smart meter / house `is_active` status to true. It must also publish the registration payload back over mqtt to iot service. This will allow the iot service to register all the house details.
 
 **NOTE**: This must also sync the in memory house state according to the sqlite database.
 

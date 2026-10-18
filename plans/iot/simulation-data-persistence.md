@@ -60,8 +60,7 @@ SimState must now query data from the sqlite database instead of storing everyth
 
 ## Handling actuation commands for registering houses
 
-When the iot service sends actuation command after a successful user to iot smart meter registration between frontend client (web/mobile) and DEWA mock app, the iot simulation must 
-
+When the iot service sends actuation command after a successful user to iot smart meter registration between frontend client (web/mobile) and DEWA mock app, the iot simulation must
 
 ## Edge cases
 
@@ -69,7 +68,7 @@ There are numerous edge cases that we need to watch out for:
 
 ### Yaml config changes
 
-If we change `config.yaml` and modify any of the grid info or add extra grids, then we must manually clear the table and rerun the seed or program. 
+If we change `config.yaml` and modify any of the grid info or add extra grids, then we must manually clear the table and rerun the seed or program.
 
 Also both iot simulation (outside our system boundary) and iot service must agree on grids beforehand. There must be a separate cli command or something that enforces and runs this before the whole system runs. This must be enforced at `gridx-workspace` level. [Will be done later]
 
