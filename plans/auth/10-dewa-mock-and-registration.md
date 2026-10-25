@@ -57,7 +57,7 @@ POST /api/link-requests/:requestId/reject
 
 | Method | Endpoint | Description | Request / Response Payload Example |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/api/link-requests` | Called by your platform when a user initiates a meter claim. | **Req:** `{"registrationId": "REG-123", "meterId": "METER-001", "userReference": "USER-123"}`<br>**Res:** `{"status": "PENDING", "message": "Link request created"}` |
+| **POST** | `/api/link-requests` | Called by your platform when a user initiates a meter claim. | **Req:** `{"registrationId": "REG-123", "meterId": "METER-001", "userReference": "USER-123"}`<br>**Res:** `{"requestId": "REQ-123", "status": "PENDING", "message": "Link request created"}` |
 | **GET** | `/api/link-requests` | Called by the DEWA Mock Customer Portal UI to list all requests. | **Res:** `[{"registrationId": "REG-123", "meterId": "METER-001", "status": "PENDING", ...}]` |
 | **GET** | `/api/link-requests/:requestId` | Called by your platform to poll or check the approval status. | **Res:** `{"registrationId": "REG-123", "meterId": "METER-001", "status": "APPROVED"}` |
 | **POST** | `/api/link-requests/:requestId/approve` | Triggered when the customer clicks `[ Approve ]` in the DEWA portal. | **Res:** `{"success": true, "status": "APPROVED"}` |
