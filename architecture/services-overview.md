@@ -292,27 +292,17 @@ Info: A transaction service that consumes executed trades and performs financial
 
 ### 12. Notification Service
 
-Full Plan & Documentation: [Notification Service Plan](../plans/notification/README.md)
+Full Plan & Documentation: **Not available will be added in future**
 
-Info: An event-driven service that turns domain events (trades, orders, smart meter and grid alerts) into user notifications delivered through the in-app inbox, email and mobile push (Expo), with user preferences and delivery tracking.
+Info: An event-driven service that triggers instant push notifications via Expo Push and handles system wide notification alerts for in-app, email and other channels
 
 #### Features:
 
-* Multi-Channel Dispatch Engine (in-app, email, mobile push)
-* In-app inbox with real-time updates through the API Gateway WebSocket
-* Transactional email with templates, bounce handling and one-click unsubscribe
-* Expo Push Token Management, receipts and invalid token cleanup
-* Per-user notification preferences
+* Multi-Channel Dispatch Engine
+* Expo Push Token Management
 * Real-Time Trade & Matching Alerts
 * Smart Meter & Grid Alerts
 
 #### Techstack & Justification:
 
-* Node JS + TypeScript - same stack as Auth Service and API Gateway
 * Fastify - Asynchronous I/O Execution and easy to build
-* gRPC (ConnectRPC) + shared Protobuf SDK - internal API used by the gateway
-* Kafka (`@confluentinc/kafka-javascript`) - consumes domain events
-* PostgreSQL - inbox, preferences, push tokens and a durable delivery queue
-* Redis - rate limiting and unread-count cache
-* Mailtrap + React Email - email delivery and templates
-* Expo Push Service (`expo-server-sdk`) - one API for FCM and APNs
