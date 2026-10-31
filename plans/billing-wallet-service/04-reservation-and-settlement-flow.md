@@ -6,13 +6,15 @@ connie-title: Billing Service - Reservation and Settlement flow
 
 ## 4.1 Buy order lifecycle (happy path)
 
-```
-User ──► Gateway ──► OMS ──► Billing.ReserveCredits ──► (hold ACTIVE)
-                       │
-                       ▼ order accepted into book
-                  Matching engine ── trade ──► OMS ──► Billing.SettleTrade (per fill)
-                       │
-              order filled / cancelled ──► OMS ──► Billing.ReleaseReservation (if anything left)
+```mermaid
+flowchart TD
+    User --> Gateway --> OMS
+    OMS -->|"Reserve Credits (hold ACTIVE)"| BillingReserve["Billing.ReserveCredits"]
+    OMS -->|"Order accepted into book"| MatchingEngine["Matching Engine"]
+    MatchingEngine -->|Trade| OMS
+    OMS -->|"Settle Trade (per fill)"| BillingSettle["Billing.SettleTrade"]
+    MatchingEngine -->|"Order filled / cancelled"| OMS
+    OMS -->|"Release Reservation (if anything left)"| BillingRelease["Billing.ReleaseReservation"]
 ```
 
 OMS must call `ReserveCredits` **before** the order reaches the matching engine, and reject the order if billing says `INSUFFICIENT_FUNDS`. This applies to both **limit** and **market** buy orders. Sell orders skip reservation (the seller fee comes out of proceeds).
@@ -118,13 +120,20 @@ Sum = 0.
 
 ## 4.8 Sequence summary (settlement)
 
-```
-OMS ─SettleTrade(trade_id,…)─► Billing
-   Billing: BEGIN
-            idempotency check → fee config → compute
-            lock wallets (sorted) → lock hold
-            update wallets/hold → journal + lines → settlement row → outbox
-            COMMIT
-   Billing ─response─► OMS
-   Outbox relay ─► event bus ─► notification / WebSocket service (balance updates)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant OMS
+    participant Billing
+    participant Outbox as Outbox Relay
+    participant Bus as Event Bus
+    participant WS as Notification / WS Service
+
+    OMS->>Billing: SettleTrade(trade_id, …)
+    
+    Note over Billing: BEGIN Transaction<br/>• idempotency check → fee config → compute<br/>• lock wallets (sorted) → lock hold<br/>• update wallets/hold → journal + lines → settlement row → outbox<br/>COMMIT
+
+    Billing-->>OMS: Response
+    Outbox->>Bus: Publish Event
+    Bus->>WS: Broadcast Balance Updates
 ```

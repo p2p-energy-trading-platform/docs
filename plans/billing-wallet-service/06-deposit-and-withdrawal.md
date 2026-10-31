@@ -38,30 +38,31 @@ Stripe does not offer live accounts in Sri Lanka, but **test mode works from any
 
 ## Deposit flow
 
-```
-User ─► Gateway ─► Billing.CreateDepositIntent(amount, idempotency_key, urls)
-   1. validate min/max/daily limits, rate limit
-   2. compute charge_amount + currency (fixed now)
-   3. BEGIN; insert deposits(PENDING); COMMIT
-   4. Stripe: create Checkout Session
-        client_reference_id = deposit_id
-        metadata = {deposit_id, wallet_id, user_id}
-        expires_at = now + 30 min
-        Idempotency-Key = "dep:" + deposit_id
-   5. update deposit.provider_ref = session.id; return session.url
-User ─► redirected to Stripe Checkout ─► pays
-Stripe ─webhook─► Gateway ─► Billing.ConfirmDeposit(raw_body, headers)
-   Billing: ParseWebhook (verify Stripe-Signature on raw bytes)
-            BEGIN
-              INSERT provider_events(event_id) ON CONFLICT DO NOTHING; if duplicate → COMMIT, return OK
-              lock deposit row (by session id / metadata deposit_id)
-              cross-check amount_total + currency == deposit.charge_amount + charge_currency
-              if status == PENDING and payment_status == 'paid':
-                 journal DEPOSIT: PAYMENT_CLEARING -amount, user wallet +amount
-                 wallet.available += amount; deposit COMPLETED; store payment_intent id
-                 outbox event
-            COMMIT
-            return 2xx
+```mermaid
+flowchart TD
+    User --> Gateway -->|"Billing.CreateDepositIntent(amount, idempotency_key, urls)"| BillingCreate["Billing: Create Deposit Intent"]
+    
+    subgraph CreateSteps ["Create Deposit Logic"]
+        BillingCreate --> S1["1. Validate min/max/daily limits, rate limit"]
+        S1 --> S2["2. Compute charge_amount + currency"]
+        S2 --> S3["3. BEGIN: insert deposits(PENDING); COMMIT"]
+        S3 --> S4["4. Stripe: Create Checkout Session<br>(client_reference_id, metadata, expires_at, Idempotency-Key)"]
+        S4 --> S5["5. Update deposit.provider_ref = session.id<br>Return session.url"]
+    end
+    
+    S5 --> UserRedirect["User redirected to Stripe Checkout & Pays"]
+    UserRedirect --> StripeWebhook["Stripe Webhook"]
+    StripeWebhook --> Gateway2["Gateway"] --> BillingConfirm["Billing.ConfirmDeposit(raw_body, headers)"]
+    
+    subgraph ConfirmSteps ["Confirm Deposit Logic (Billing)"]
+        BillingConfirm --> C1["ParseWebhook (verify Stripe-Signature)"]
+        C1 --> C2["BEGIN: INSERT provider_events (idempotency check)"]
+        C2 --> C3["Lock deposit row & cross-check amount/currency"]
+        C3 --> C4{"status == PENDING<br>& payment_status == 'paid'?"}
+        C4 -- Yes --> C5["Journal DEPOSIT: PAYMENT_CLEARING -amount, user wallet +amount<br>wallet.available += amount; deposit COMPLETED; store payment_intent id; outbox event"]
+        C4 -- No / Duplicate --> C6["COMMIT & return 2xx"]
+        C5 --> C6
+    end
 ```
 
 Events handled:
@@ -100,20 +101,22 @@ Ignore unknown event types with a 2xx so Stripe stops retrying.
 
 **NOTE**: Admin realted logic are not planned or implemented. These are nice to have features.
 
-```
-User ─► Gateway ─► Billing.RequestWithdrawal(amount, destination)
-   BEGIN: lock wallet → require available >= amount → available -= amount, reserved += amount
-          insert hold(kind=WITHDRAWAL) + withdrawals(PENDING) → outbox  COMMIT
-
-Admin ─► Gateway ─► Billing.ApproveWithdrawal / RejectWithdrawal
-   Reject: release hold, status REJECTED
-   Approve: status APPROVED  (admin pays the user outside the system in v1)
-
-Admin confirms payout ─► Billing.MarkWithdrawalPaid
-   BEGIN: journal WITHDRAWAL: user wallet -amount, PAYMENT_CLEARING +amount
-          wallet.reserved -= amount; hold CONSUMED; status PAID  COMMIT
-Payout fails ─► release hold, status FAILED
-User cancels while PENDING ─► CancelWithdrawal: release hold, status CANCELLED
+```mermaid
+flowchart TD
+    User --> Gateway -->|"Billing.RequestWithdrawal(amount, destination)"| BillingReq["Billing: Request Withdrawal"]
+    
+    BillingReq --> ReqTx["BEGIN: Lock wallet<br>• require available >= amount<br>• available -= amount, reserved += amount<br>• insert hold(kind=WITHDRAWAL) + withdrawals(PENDING) + outbox<br>COMMIT"]
+    
+    ReqTx --> AdminAction["Admin Action via Gateway"]
+    
+    AdminAction -->|"RejectWithdrawal"| Rej["Release hold, status REJECTED"]
+    AdminAction -->|"ApproveWithdrawal"| App["Status APPROVED<br>(admin pays user outside system in v1)"]
+    
+    App --> MarkPaid["Admin confirms payout: MarkWithdrawalPaid"]
+    MarkPaid --> PaidTx["BEGIN: Journal WITHDRAWAL<br>• user wallet -amount, PAYMENT_CLEARING +amount<br>• wallet.reserved -= amount; hold CONSUMED; status PAID<br>COMMIT"]
+    
+    ReqTx --> Fail["Payout fails → Release hold, status FAILED"]
+    ReqTx --> Cancel["User cancels while PENDING → CancelWithdrawal<br>• Release hold, status CANCELLED"]
 ```
 
 - Funds are locked at request time, so users can't trade them away while the withdrawal is pending.
