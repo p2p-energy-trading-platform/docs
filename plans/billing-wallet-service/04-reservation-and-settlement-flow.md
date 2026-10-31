@@ -73,6 +73,7 @@ Inputs: trade, buyer, seller, qty, execution price.
 | Buyer wallet | `-buyer_debit` |
 | Seller wallet | `+seller_credit` |
 | PLATFORM_REVENUE | `+platform_credit` |
+
 Sum = 0.
 
 1. Insert `trade_settlements` row, outbox events (`trade.settled`, balance changes for both users).

@@ -6,7 +6,7 @@ connie-title: Billing Service - Folder structure
 
 ## Repository layout
 
-```
+```text
 billing-service/
 ├── cmd/
 │   └── billing/

@@ -73,6 +73,7 @@ Events handled:
 | `checkout.session.async_payment_failed` | Mark FAILED |
 | `checkout.session.expired` | Mark EXPIRED |
 | `charge.refunded`, `charge.dispute.created` | Dispute/refund handling below |
+
 Ignore unknown event types with a 2xx so Stripe stops retrying.
 
 ### Rules that keep this safe
