@@ -25,7 +25,7 @@ Postgres decides. Redis may be empty or flushed at any time and billing must rem
 | Request fingerprint | Store a hash of the request payload with the key. If same key + different hash then that means `IDEMPOTENCY_CONFLICT` | Catches caller bugs |
 | Redis response cache | `idem:{rpc}:{key}` => serialized response and TTL is 24h | This is Fast path only. Can be skipped on cache miss and fall through to DB |
 
-Flow for a mutating RPC: 
+Flow for a mutating RPC:
 
 1. Redis hit => return cached response
 1. Otherwise run the DB transaction, which is naturally idempotent

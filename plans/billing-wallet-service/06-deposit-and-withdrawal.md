@@ -29,6 +29,7 @@ Implementations: `stripe` (primary, test mode first) and `mock` (unit/integratio
 | Test cards | `4242 4242 4242 4242` (success), `4000 0000 0000 9995` (declined, insufficient funds), `4000 0025 0000 3155` (3-D Secure) |
 
 ### Sri Lanka caveat (accepted for this project)
+
 Stripe does not offer live accounts in Sri Lanka, but **test mode works from anywhere** with an account created in a supported country, so the sandbox plan is unaffected. Whether `lkr` is accepted as a charge currency on your test account is something to check in the Stripe dashboard/docs (I haven't verified it here). Fallback if it isn't:
 
 - Charge in `usd` with a fixed demo rate: `charge_amount = ceil(credits / CREDITS_PER_USD)` in USD cents and store `fx_rate` on the deposit and keep it fixed per intent.
@@ -64,6 +65,7 @@ Stripe ─webhook─► Gateway ─► Billing.ConfirmDeposit(raw_body, headers)
 ```
 
 Events handled:
+
 | Stripe event | Action |
 |---|---|
 | `checkout.session.completed` | Credit if `payment_status = paid`. If still unpaid (async method) wait |
@@ -112,6 +114,7 @@ Admin confirms payout ─► Billing.MarkWithdrawalPaid
 Payout fails ─► release hold, status FAILED
 User cancels while PENDING ─► CancelWithdrawal: release hold, status CANCELLED
 ```
+
 - Funds are locked at request time, so users can't trade them away while the withdrawal is pending.
 - The state machine is enforced in code and with `UPDATE ... WHERE status = 'PENDING'` guards, so double-clicks and retries are safe.
 - Controls: minimum amount, daily limit, withdrawal only to a saved destination; optional flat withdrawal fee booked as an extra `PLATFORM_REVENUE` line in the payout journal.

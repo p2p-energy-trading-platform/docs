@@ -9,7 +9,7 @@ connie-title: Billing Service - Domain Model and Database Schema
 - All amounts are `BIGINT` **minor units**: `1 credit = 100 units`, so `45.50 LKR = 4550`.
 - Energy quantity is an integer in **Wh** (not kWh) to avoid decimals.
 - Prices are integer minor units **per kWh**.
-- Trade value = `round_half_up(qty_wh * price_per_kwh_minor / 1000)`. 
+- Trade value = `round_half_up(qty_wh * price_per_kwh_minor / 1000)`.
 
 ## Entities
 
@@ -145,6 +145,7 @@ CREATE TABLE fee_configs (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
+
 This table is Append-only. The active row is the latest with `effective_from <= now()`. Old rows should not be editied. Currently in this plan there is no per-trade minimum fee.
 
 ### deposits and withdrawals
@@ -196,7 +197,6 @@ Transactional outbox for publishing wallet events (balance changed, trade settle
 
 **NOTE**: Any notification realted events must be sent to the notification service (currently not implemented). So the way how outbox is structured or how it is send is not confimed yet.
 
-
 ```sql
 CREATE TABLE outbox (
   id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -212,7 +212,7 @@ CREATE INDEX outbox_unpublished_idx ON outbox (id) WHERE published_at IS NULL;
 
 ## Why holds don't create ledger lines
 
-A hold only *encumbers* the user's own money; nothing moves between accounts. So reserving shifts `available -> reserved` inside the wallet row and updates the hold, with no journal. Journals are written when money **actually changes owner** (settlement, deposit, payout). 
+A hold only *encumbers* the user's own money; nothing moves between accounts. So reserving shifts `available -> reserved` inside the wallet row and updates the hold, with no journal. Journals are written when money **actually changes owner** (settlement, deposit, payout).
 
 Invariant used in reconciliation:
 

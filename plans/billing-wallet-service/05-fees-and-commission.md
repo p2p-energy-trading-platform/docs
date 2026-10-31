@@ -14,6 +14,7 @@ Both sides of every trade pay a commission to the platform. Rates are in **basis
 | `seller_fee_bps` | 100 (1%) | Deducted from the seller's proceeds |
 
 Example, trade value = 1,000.00 credits:
+
 - Buyer pays 1,000.00 + 10.00 = **1,010.00**
 - Seller receives 1,000.00 − 10.00 = **990.00**
 - Platform revenue = **+20.00** (2% of trade value)

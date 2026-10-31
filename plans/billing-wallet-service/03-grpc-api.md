@@ -13,7 +13,6 @@ Proto files should be created in `protobuf` repo under package `billing.v1`.
 - Errors use gRPC status codes + a typed `ErrorInfo` reason (see bottom).
 - Deadlines are mandatory on callers (suggest 2s for reserve, 3s for settle).
 
-
 **NOTE**: All pagination types are just examples in this protobuf definitions. Actual pagination must be confirmed in our private group. Ask mani or keeththi before assuming incorrect stuff. Also check what is on the frontend demo ui too.
 
 ## OrderBillingService (caller: Order Management only)
@@ -91,6 +90,7 @@ message SettleTradeResponse {
 ```
 
 Notes:
+
 - **Billing computes all money** (value, fee, reservation size) from qty and price, so OMS can't drift from billing's rounding rules.
 - `SettleTrade` takes `trade_id` as the idempotency key and returns the original result on replay.
 - Billing rejects a fill whose `price_per_kwh` exceeds the hold's `max_price_per_kwh` (`PRICE_EXCEEDS_RESERVATION`). This is the safety net for market buys.
@@ -160,6 +160,7 @@ service AdminBillingService {
   rpc FreezeWallet(FreezeWalletRequest) returns (Wallet);
 }
 ```
+
 The gateway must verify the admin role from the JWT and billing additionally requires `x-user-role: admin` metadata and logs `reviewed_by`.
 
 ## Error reasons

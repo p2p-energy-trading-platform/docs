@@ -8,7 +8,6 @@ connie-title: Billing Service - Overview
 
 The Billing & Wallet service owns **all money-like state** in the platform: user credit balances, credit reservations for open orders, trade settlement, the platform commission, and deposits/withdrawals. It is the single source of truth for "who has how many credits".
 
-
 ## Some stuff to watch out for or keep note of
 
 Our mentor asked us to make this system be like it is functioning in Sri Lanka. But Sri Lanka has no infra or any incentive to handle any project like this. Meanwhile UAE does (smart meter, dewa utility app, etc). But future panels can ask problematic questions if we decide to go full lankan based system. It is better to approach the LKR or AED currency as not something set in stone. In this document, I will use LKR.

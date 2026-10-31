@@ -75,8 +75,8 @@ Inputs: trade, buyer, seller, qty, execution price.
 | PLATFORM_REVENUE | `+platform_credit` |
 Sum = 0.
 
-9. Insert `trade_settlements` row, outbox events (`trade.settled`, balance changes for both users).
-10. Commit.
+1. Insert `trade_settlements` row, outbox events (`trade.settled`, balance changes for both users).
+2. Commit.
 
 **Price improvement:** if a buyer's limit is 50 but the trade executes at 45, only the executed value is consumed; the difference stays in the hold and returns to `available` when the order is final. For market buys this is the normal case, since the hold was sized at the collar.
 
@@ -116,6 +116,7 @@ Sum = 0.
 | Billing down | OMS rejects new buy orders (fail closed) and settlement retried from OMS queue with backoff |
 
 ## 4.8 Sequence summary (settlement)
+
 ```
 OMS ─SettleTrade(trade_id,…)─► Billing
    Billing: BEGIN

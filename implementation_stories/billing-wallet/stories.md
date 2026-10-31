@@ -22,6 +22,7 @@ connie-title: Billing Service Implementation Stories
 * **Scope:** Implement buy order reservation logic, hold tracking, rounding buffers, and market order price collar validations following the document guidelines.
 
 ### Task 4: Reservation Expiry and Background Safety Net
+
 * **Reference Documents:** `04-reservation-and-settlement-flow.md`
 * **Scope:** Implement the background sweeper worker to process expired holds and clean up abandoned order allocations safely.
 
