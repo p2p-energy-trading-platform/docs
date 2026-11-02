@@ -28,15 +28,6 @@ connie-title: Notification Service - User Stories
 | Auth | `auth-service` |
 | Infra | `gridx-infra`, `gridx-workspace` |
 
-**Checked against the current code (2026-11-02):**
-
-- `OrderUpdated` in `protobuf/proto/gridx/order/v1/order_update_events.proto` has no `user_id` or `original_quantity`.
-- `TradeExecuted.buyer_id` / `seller_id` are `uint64`. Auth Service user IDs are UUIDs.
-- The matching engine publishes order state to the topic set by `KAFKA_ORDER_STATE_TOPIC` (`order.state` in `.env.example`). The plan uses `order.updated`. The topic name must be agreed.
-- The matching engine `ExpiryManager` is not called yet and no `order.expired` event is published.
-- Auth Service already has a `GetUser` RPC.
-- The API Gateway WebSocket (`user.self`) exists, but there is no Kafka consumer for `realtime.user-events.v1`.
-- There is no `gridx/notification/v1` proto yet.
 
 ---
 
