@@ -16,10 +16,9 @@ jobs:
       - name: Checkout Codebase
         uses: actions/checkout@v4
 
-      - name: Install Chromium
+      - name: Verify Chrome is available
         run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium
+          google-chrome --version
 
       - name: Prepare Confluence publish copy
         run: |
@@ -36,7 +35,7 @@ jobs:
       - name: Convert Mermaid blocks to SVG images
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
-          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
         run: |
           node scripts/prepare-confluence-docs.js
 
@@ -44,7 +43,7 @@ jobs:
         uses: markdown-confluence/publish-action@v5
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
-          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
         with:
           confluenceBaseUrl: 'https://vidurshan145.atlassian.net' 
           confluenceParentId: '5472427'   
