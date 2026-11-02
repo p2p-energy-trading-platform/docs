@@ -28,7 +28,6 @@ connie-title: Notification Service - User Stories
 | Auth | `auth-service` |
 | Infra | `gridx-infra`, `gridx-workspace` |
 
-
 ---
 
 ## Phase 0 - Contract Fixes (other teams)
