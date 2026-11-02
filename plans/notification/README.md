@@ -88,3 +88,4 @@ These must be settled with the owners of other services before implementation of
 - [API Gateway - Websockets](../api_gateway/05-websockets.md)
 - [Auth - Account management and recovery](../auth/12-account-management-and-recovery.md) (future Notification Service email adapter)
 - [Services Overview](../../architecture/services-overview.md)
+- [Notification Service - User Stories](../../implementation_stories/notification/stories.md) (Jira breakdown of this plan)
