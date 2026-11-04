@@ -287,7 +287,7 @@ Within one transaction, in this order:
 
 1. **Ensure the trader account.** Idempotent and harmless for duplicate requests.
 
-```sql
+   ```sql
    WITH ins AS (
        INSERT INTO trader_accounts (user_id) VALUES ($1)
        ON CONFLICT (user_id) DO NOTHING
@@ -297,18 +297,18 @@ Within one transaction, in this order:
    UNION ALL
    SELECT trader_id FROM trader_accounts WHERE user_id = $1
    LIMIT 1;
-```
+   ```
 
 2. **Insert the order.** This statement serializes concurrent duplicates:
 
-```sql
+   ```sql
    INSERT INTO orders (user_id, trader_id, house_id, meter_id, grid_id, grid_zone_id, side, order_type,
                        requested_price, limit_price, price_defaulted, quantity_wh, remaining_quantity_wh,
                        delivery_slot_start, delivery_slot_end, expires_at, idempotency_key, request_fingerprint)
    VALUES (..., $quantity, ..., $key, $fingerprint)
    ON CONFLICT (user_id, idempotency_key) DO NOTHING
    RETURNING order_id, created_at;
-```
+   ```
 
    Zero rows means a concurrent or earlier duplicate. Roll back, read the existing order, then replay (same fingerprint) or return `IDEMPOTENCY_CONFLICT`. No allocation has happened yet, so a duplicate never allocates energy.
 3. **SELL only: allocate energy** with the conditional update in the IoT energy validation document, then insert the `energy_allocations` row. Zero rows updated rolls back with `ENERGY_INSUFFICIENT`.

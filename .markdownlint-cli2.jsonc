@@ -2,12 +2,19 @@
   "globs": ["**/*.md"],
   "ignores": [
     "node_modules/**",
+    ".local-backups/**",
     ".git/**",
     ".github/**",
     ".confluence-publish/**"
   ],
   "config": {
     "default": true,
+
+    // Preserve Setext H1/H2 and ATX H3-H6 headings.
+    "MD003": false,
+
+    // Allow either sequential numbering or repeated 1. prefixes.
+    "MD029": { "style": "one_or_ordered" },
 
     // Your docs start with connie-title front matter, not H1.
     "MD041": false,

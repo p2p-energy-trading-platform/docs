@@ -105,6 +105,7 @@ Milestone Details
 | W7 | Merge PR #87 with files 01 to 13. Correct the stale labels in `architecture/base.md`. | S |
 
 **Exit criteria**
+
 - Contract checks pass and the SDK is released.
 - Topics exist with the stated settings.
 - CI is green on the empty service, and migration up and down passes (PER-01, PER-02, PER-03).
@@ -121,6 +122,7 @@ Milestone Details
 | W5 | The interim `ORDER_GRID_ZONE_MAP` is configured. | S |
 
 **Exit criteria** (all through the real gateway, with the real engine)
+
 - A SELL order becomes `OPEN`. A crossing BUY fills both orders and produces one trade (MEI-02 scenarios 1, 2, 3).
 - A rejected order becomes `REJECTED` and its allocation is released (scenario 7).
 - A republished placement creates no second order and no second trade (scenario 8, MEI-03).
@@ -139,6 +141,7 @@ Milestone Details
 | W3 | The cancel route. | S |
 
 **Exit criteria**
+
 - All ten cross-service scenarios pass with the real engine (MEI-02), including cancel racing a fill and an engine restart in the middle of a flow.
 - Tests passing: CXL-01 to CXL-06, KAF-04, VAL-02, and the cross-zone price tests, plus the engine's own tests for E-9 to E-18.
 - Every consumer of the engine's topics reads `read_committed`.
@@ -155,6 +158,7 @@ Milestone Details
 | W4 | Create the two recovery topics. Confirm the grid transfer rules topic is compacted or fully retained. | S |
 
 **Exit criteria**
+
 - REC-01 to REC-04 pass.
 - REC-05: at least 200 randomised engine crash cycles end with executed quantity never above order quantity and with Order Service and engine state equal.
 - The nightly cross-service and fault-injection suites pass for a week.
@@ -168,6 +172,7 @@ Milestone Details
 | W1 | OS-9 Billing client and the `required` mode. | M |
 
 **Exit criteria**
+
 - WAL-02 and WAL-03 pass against the real Billing service.
 - A BUY order in `required` mode reserves funds, fills, settles, and releases the unused hold correctly, including after cancel and expiry.
 - Insufficient funds, a frozen wallet, and Billing unavailable are rejected with the right codes.
@@ -182,6 +187,7 @@ Milestone Details
 | W7 | Final documentation and the list of remaining limitations. | S |
 
 **Exit criteria**
+
 - Every item of the release checklist in the security, observability, and testing document is true.
 - Performance targets are measured and met, or adjusted and approved.
 - The security review of the threat table is done.
