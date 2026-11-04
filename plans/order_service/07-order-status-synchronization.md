@@ -1,5 +1,5 @@
 ---
-connie-title: Order Status Synchronization
+connie-title: Order Service Status Synchronization
 ---
 
 Order Status Synchronization
@@ -8,157 +8,230 @@ Order Status Synchronization
 Purpose
 -------
 
-The Order Service consumes authoritative Matching Engine updates and persists the corresponding order lifecycle state in PostgreSQL.
+The Order Service consumes Matching Engine updates and applies them to its durable order records. This document is the canonical definition of how an update is validated and applied: the decision procedure, the full transition matrix, the quantity rules, the audit trail, and the handling of every abnormal case.
 
-PostgreSQL remains the durable source of truth for the Order Service's order records and status history. Matching outcomes must originate from the Matching Engine rather than being independently calculated by the Order Service.
+PostgreSQL is the durable source of truth for the Order Service's order records and status history. The Matching Engine is authoritative for fills, quantities, and engine-side lifecycle transitions. The Order Service owns two local states (`PENDING`, `CANCEL_PENDING`) and the allocation of SELL energy.
 
-Consumer Workflow
+An order update is not proof that wallet settlement has completed. Settlement belongs to Billing and Settlement.
+
+Inputs
+------
+
+`OrderUpdated` (see the Kafka contracts document) carries `event_id`, `event_type`, `order_id`, `status`, `remaining_quantity` (cumulative and absolute), `updated_at`, `order_seq`, `causation_id`, and `reason`.
+
+- `order_seq` is the only ordering signal. `updated_at` is the engine's wall clock at mapping time. It is stored for audit and **never** used to order events.
+- `event_id` identifies the message, for deduplication.
+- `status` is authoritative. `event_type` must agree with it, otherwise the message is malformed.
+
+| `status` | Required `event_type` | Required `remaining_quantity` |
+|---|---|---|
+| `NEW` | `UPDATED` | equals `quantity` |
+| `PARTIALLY_FILLED` | `PARTIALLY_FILLED` | between 1 and `quantity - 1` |
+| `FILLED` | `FILLED` | 0 |
+| `CANCELLED` | `CANCELLED` | at least 1 |
+| `EXPIRED` | `EXPIRED` | at least 1 |
+| `REJECTED` | `REJECTED` | equals `quantity` |
+
+A `CANCELLED` or `EXPIRED` order with nothing remaining is a contract violation, because a fully executed order is `FILLED`. The engine's current mapper does not support `REJECTED` and must be extended.
+
+**Special case: `REJECTED` with reason `UNKNOWN_ORDER`.** The engine sends this when it receives a cancel for an order it has no record of. It has no sequence for that order, so `order_seq` is 0. The Order Service handles this event first, before any sequence check, and never applies it to state (see below).
+
+Decision Procedure
+------------------
+
+Every update is processed in one PostgreSQL transaction. Steps 1 to 3 are the standard prologue from the persistence document.
+
+1. **Deduplicate.** Insert `event_id` into `processed_events`. If it already exists, the event is an exact duplicate: commit and advance the offset.
+2. **Lock the order** with `SELECT ... FOR UPDATE`. If the order does not exist: dead-letter with stage `UNKNOWN_ORDER`, commit, alert.
+3. **Validate the message** (the table above, plus a valid UUID `event_id`, non-zero `order_id`, `order_seq >= 1`, `remaining_quantity <= quantity`). A violation is dead-lettered with stage `VALIDATE`.
+4. **Unknown-order reply.** If `reason` is `UNKNOWN_ORDER`: dead-letter with stage `UNKNOWN_ORDER`, set `needs_reconciliation`, make no state change, and alert.
+5. **Sequence check.**
+   - `order_seq < me_seq`: stale. Ignore, count it, commit.
+   - `order_seq == me_seq`: if status and remaining quantity equal the stored values it is a repeat with a different event ID, so ignore it. Otherwise the engine reused a sequence number with different content. Dead-letter with stage `APPLY`, set `needs_reconciliation`.
+   - `order_seq > me_seq`: continue. Gaps are allowed, because quantities are cumulative and a missed event is covered by a later one.
+6. **Quantity check.** `remaining_quantity` must not exceed the stored remaining quantity. An increase is impossible and is dead-lettered with stage `APPLY` and `needs_reconciliation`.
+7. **Look up the result** in the transition matrix below.
+   - **Echo:** only `me_seq` is updated. No history row, no status change, no alert.
+   - **Apply:** go to step 8.
+   - **Invalid:** dead-letter with stage `APPLY` (stage `STALE_TERMINAL` for an engine-sourced terminal order), set `needs_reconciliation`, alert, change nothing else.
+8. **Apply.** In the same transaction: update status, `remaining_quantity_wh`, `status_reason`, `me_seq`, `version`, `updated_at`, and for a terminal status `terminal_source` and `terminal_at`. Append the history row. Adjust the SELL allocation. Commit, and only then commit the Kafka offset.
+
+Because the quantity rule and the sequence rule both hold, replaying the same events in any duplicated or delayed pattern converges to the same final state.
+
+Transition Matrix
 -----------------
 
-Process each order-update event using the following workflow:
+Rows are the stored status. Columns are the engine status in the event. **A** means apply (the cell shows the new stored status), **E** means echo (identical remaining quantity), **K** means keep `CANCEL_PENDING` and update only quantities and `me_seq`, and **X** means invalid.
 
-1. Consume the Kafka message.
-2. Validate the message schema, required identifiers, and supported event version.
-3. Begin a PostgreSQL transaction.
-4. Check whether the event has already been processed.
-5. Load and lock the relevant order record, or use an equivalent concurrency-safe update.
-6. Validate the event against the order's current state and version.
-7. Apply the authoritative status and quantity changes when appropriate.
-8. Record any new execution identifiers and update relevant energy-allocation records if the Order Service owns that responsibility.
-9. Append status history for an actual state change.
-10. Record successful event processing in the same transaction.
-11. Commit the PostgreSQL transaction.
-12. Commit the Kafka offset only after the required database changes are durable.
+| Stored | `NEW` | `PARTIALLY_FILLED` | `FILLED` | `CANCELLED` | `EXPIRED` | `REJECTED` |
+|---|---|---|---|---|---|---|
+| `PENDING` | A: `OPEN` | A: `PARTIALLY_FILLED` | A: `FILLED` | see note 1 | A: `EXPIRED` | A: `REJECTED` |
+| `OPEN` | E | A: `PARTIALLY_FILLED` | A: `FILLED` | X | A: `EXPIRED` | X |
+| `PARTIALLY_FILLED` | X | A, or E if remaining is unchanged | A: `FILLED` | X | A: `EXPIRED` | X |
+| `CANCEL_PENDING` | K | K (E if unchanged) | A: `FILLED` | A: `CANCELLED` | A: `EXPIRED` | A: `REJECTED` |
+| `FILLED`, `CANCELLED`, `EXPIRED`, `REJECTED` | see terminal rules | | | | | |
 
-If persistence fails, do not acknowledge the message as successfully processed. Retry transient failures according to the consumer's retry policy.
+**Notes**
 
-The event-processing record, order update, status history, and any locally owned allocation changes must be atomic wherever they form one logical operation.
+1. `CANCELLED` is accepted from `PENDING` only for a MARKET order with reason `IOC_REMAINDER` or `NO_LIQUIDITY`. For any other order it is invalid: a user cancel always moves the order to `CANCEL_PENDING` first, and the engine cancels nothing on its own.
+2. A `CANCELLED` event with reason `USER_REQUEST` is valid only when the stored status is `CANCEL_PENDING`.
+3. A MARKET order never rests. For a MARKET order, `NEW` and `PARTIALLY_FILLED` are invalid in every row.
+4. From `PENDING`, any forward engine status is accepted, because earlier events may have been dead-lettered or lost. The quantity rule still applies.
+5. `PENDING` to `EXPIRED` and `CANCEL_PENDING` to `REJECTED` are real cases: an order the engine never acknowledged can expire, and an engine can refuse a placement that a cancel then follows.
 
-**Event identity and deduplication**
+### Terminal rules
 
-The shared contract must define stable event identifiers and, where applicable, execution identifiers.
+A terminal stored status is never reversed by duplicate or stale events.
 
-- Repeated delivery of an already processed event must not repeat its business effects.
-- Deduplication records must be durable across service restarts.
-- A duplicate event must not create duplicate status-history entries or apply a fill twice.
-- A different event concerning the same order must still be evaluated, even if the order has already received a newer update.
+| Stored terminal source | Event | Result |
+|---|---|---|
+| Any | Identical status and remaining quantity, newer `order_seq` | **Echo**: update `me_seq` only |
+| `RECONCILER` (stored `EXPIRED`) | Any terminal engine status, remaining quantity not above the stored value | **Supersede**: apply it, set `terminal_source = ME`, record the correction in history, recompute the allocation |
+| `RECONCILER` | A non-terminal engine status | **Invalid**: quarantine, flag |
+| `ME` | Anything else | **Invalid**: quarantine as `STALE_TERMINAL`, flag, alert |
 
-The exact identifiers and deduplication strategy must match the existing Kafka contracts.
-
-Order Versions and State Transitions
-------------------------------------
-
-Use the versioning or sequence mechanism agreed with the Matching Engine to prevent stale updates from overwriting newer order state.
-
-The implementation must distinguish between:
-
-- A previously processed duplicate event.
-- A stale order-state snapshot.
-- A new execution associated with an order whose current status is already newer.
-- An invalid or conflicting transition.
-- A valid event that does not change the persisted status.
-
-Do not treat these cases as equivalent.
-
-A stale snapshot must not revert the order's current state. However, a distinct execution must not be discarded solely because its event carries an older order-state version. If the contract cannot safely reconcile the event, preserve the evidence and trigger the defined reconciliation process.
-
-State transitions must follow the agreed lifecycle. The Order Service must not invent acceptance, rejection, cancellation, or execution outcomes.
+A late event that conflicts with a legitimate fill or cancellation is therefore never silently overwritten. Either the engine's authoritative event supersedes a reconciler guess, or the conflict is preserved for an operator.
 
 Partial Fills and Quantities
 ----------------------------
 
-An order may be filled through multiple executions before it is fully executed or otherwise completed.
-
-The shared contract must define whether each event reports:
-
-- Cumulative filled and remaining quantities; or
-- The quantity added by an individual execution.
-
-Do not mix these two representations.
-
-Where the contract provides authoritative cumulative quantities, apply them with the agreed order-version rules. Where events report execution-level quantities, deduplicate each execution before applying its effects.
-
-For every accepted update, validate the resulting quantities against the order's original quantity and the agreed precision rules. Conflicting totals, negative remaining quantities, or quantities exceeding the original order quantity must trigger reconciliation rather than silent correction.
-
-The Matching Engine remains authoritative for execution prices and fill quantities.
+- `remaining_quantity` in every event is **cumulative and absolute**, never a delta. The Order Service never adds or subtracts event quantities. It replaces the stored remaining quantity.
+- `filled_quantity_wh = quantity_wh - remaining_quantity_wh`. It is derived, never stored.
+- Remaining quantity never increases. It only reaches 0 through `FILLED`.
+- Every accepted update satisfies `0 <= remaining <= quantity`, and the database constraints re-check the combination of status and quantity.
+- Distinct executions arriving out of order are harmless. A later sequence number already includes any earlier fill, so an older event is simply stale. No execution is lost.
+- The engine remains authoritative for execution prices and fill quantities. The Order Service stores no prices or trades.
 
 Status History and Auditability
 -------------------------------
 
-Record meaningful lifecycle transitions in the order-status history.
+One history row is written for every **applied** update that changes the status or the remaining quantity, and for every local transition (creation, cancel request, reconciler expiry). Echoes, stale events, and duplicates write nothing, so a repeated delivery can never create a duplicate history row.
 
-Each history record should contain the fields required by the agreed data model, potentially including:
+| Column | Content |
+|---|---|
+| `order_id`, `from_status`, `to_status` | The transition. `to_status` equals `from_status` for a quantity-only change |
+| `source` | `USER` (create, cancel request), `ME` (engine update), `RECONCILER`, `SYSTEM` (operator correction) |
+| `event_id`, `me_seq` | The triggering engine event, null for local transitions |
+| `remaining_quantity_wh` | Remaining quantity after the change |
+| `reason` | The engine reason or a local reason |
+| `engine_updated_at` | The event's `updated_at`, null for local transitions (new column, see dependencies) |
+| `created_at` | Database time of the write |
 
-- Order identifier.
-- Previous and resulting status.
-- Event identifier and event type.
-- Order version or sequence, where available.
-- Event timestamp and processing timestamp.
-- Execution identifier, when relevant.
-- Correlation identifier, when available.
-
-These are candidate fields, not a finalized schema. Confirm them against the existing database model and message contracts.
-
-Repeated delivery must not generate duplicate history records for the same logical transition. A valid event that changes quantities without changing the status must still be processed correctly, even if it does not require a new status-transition record.
+The table is append-only, enforced by a trigger. History plus `processed_events` lets an operator reconstruct exactly which events produced the current state.
 
 Energy Allocation Synchronization
 ---------------------------------
 
-If the Order Service owns energy allocations, allocation changes must be coordinated with order lifecycle changes.
+The Order Service owns the SELL allocation ledger. Changes are made in the same transaction as the status change.
 
-Define the allocation behavior for:
+| Applied change | Ledger effect |
+|---|---|
+| `PENDING` to `OPEN`, `PARTIALLY_FILLED`, or `CANCEL_PENDING` | None |
+| Quantity decrease through fills | None. Filled energy stays consumed. |
+| Cancel requested (`CANCEL_PENDING`) | None. Nothing is released on a request. |
+| Terminal `CANCELLED`, `EXPIRED`, `REJECTED` | Release the remaining quantity once |
+| Terminal `FILLED` | Nothing to release |
+| Reconciler `EXPIRED` | Release the remaining quantity once |
+| Superseding engine event after a reconciler expiry | Set `released_wh` to the new remaining quantity and add the difference back to `allocated_wh` |
+| Echo, stale, duplicate, invalid | None |
 
-- Order acceptance.
-- Order rejection.
-- Partial execution.
-- Full execution.
-- Confirmed cancellation.
-- Expiry or other terminal outcomes.
-
-Do not release reserved energy merely because a cancellation was requested. Wait for the authoritative outcome and apply the agreed allocation rules.
-
-Order-state updates and locally owned allocation changes should be committed atomically where possible. If allocation ownership belongs to another service, use the agreed integration contract instead of modifying that service's data directly.
+Release is idempotent (`released_at IS NULL` guard), so replays and recovery cannot release twice.
 
 Settlement Boundary
 -------------------
 
-The Order Service stores order lifecycle and execution references needed for its responsibilities. It must not become a duplicate wallet, balance, or financial settlement ledger.
+- The Order Service stores order lifecycle and the cumulative remaining quantity. It stores no trades, execution prices, or money.
+- `FILLED` means the engine executed the whole quantity. It does not mean the wallets have been updated.
+- The API reports `filled_quantity_wh` and the status. A per-order list of trades comes from Settlement or a trade history service, not from the Order Service.
+- The Order Service must never infer settlement from an order update, and Billing must never infer order state from a settlement.
 
-Trade settlement and financial accounting remain with their respective owning services.
+Concurrency with API Requests
+-----------------------------
 
-An order update or execution event must not be interpreted as proof that wallet settlement has completed unless the relevant settlement service explicitly confirms that outcome.
+`CancelOrder` and the update consumer both lock the order row, so they are serialized.
+
+- If the engine's `FILLED` is applied first, the cancel finds a terminal order and returns `ORDER_NOT_CANCELLABLE`.
+- If the cancel is applied first, the order becomes `CANCEL_PENDING` and the engine's later `FILLED` resolves it to `FILLED`.
+- `GetOrder` and `ListOrders` read committed state without locks.
+
+Notifications and other consumers read engine events directly and may be a few seconds ahead of the Order Service. The Order Service is the only source for `PENDING` and `CANCEL_PENDING`, and clients treat notifications as hints and confirm with `GetOrder`.
 
 Error Handling and Recovery
 ---------------------------
 
-Define handling for the following cases:
+| Case | Handling |
+|---|---|
+| Malformed or unsupported event, unknown enum, bad UUID | Dead-letter (`DECODE` or `VALIDATE`), commit, alert |
+| Unknown order ID | Dead-letter (`UNKNOWN_ORDER`), commit, alert |
+| Duplicate event (same `event_id`) | Ignore |
+| Stale event (`order_seq` below stored) | Ignore, count |
+| Conflicting content with the same `order_seq` | Dead-letter (`APPLY`), flag the order |
+| Impossible transition or quantity | Dead-letter (`APPLY` or `STALE_TERMINAL`), flag the order, alert |
+| Database failure or timeout | No commit. Pause the partition and retry the same record with backoff up to 60 s. Alert after 5 minutes. Never skip. |
+| Consumer restart or repeated delivery | The transaction either committed with the offset not yet committed (then `event_id` deduplicates) or rolled back (then it is applied once) |
+| Distinct executions out of order | No action needed, because quantities are cumulative |
+| An event that cannot be reconciled automatically | The order is flagged (`needs_reconciliation`), the event is in `consumer_dead_letters`, and an alert fires |
+| Non-transient `APPLY` failure | Retried up to five times, then dead-lettered |
 
-- Malformed or unsupported events.
-- Missing orders or unknown identifiers.
-- Duplicate events.
-- Stale or conflicting versions.
-- Impossible state transitions.
-- Database failures.
-- Repeated delivery and consumer restarts.
-- Distinct executions received out of order.
-- Events that cannot be reconciled automatically.
+Nothing is silently discarded. Every ignored event is counted and every conflicting event is stored with its payload.
 
-Use bounded retries and the project's agreed quarantine or dead-letter mechanism for messages that cannot be processed safely. Preserve enough context to investigate and replay events without duplicating their effects.
+### Operator reconciliation path
 
-Do not silently discard conflicting execution data. Make unresolved inconsistencies observable and provide a reconciliation path.
+1. Query pending dead letters and flagged orders.
+2. Compare the order history and `me_seq` with the engine's logs and `TradeExecuted` events.
+3. If the event is valid but was blocked by a bug, fix the bug and replay with `cmd/dead-letter-replay`. Replay is safe because of deduplication, `me_seq`, and the idempotent allocation release.
+4. If the stored state is wrong, an authorised operator applies a correction as a normal transaction with a history row whose source is `SYSTEM`, then clears `needs_reconciliation`.
+5. Mark the dead letter `REPLAYED` or `DISCARDED` with a note. Never delete it.
 
-Contract and Implementation Dependencies
-----------------------------------------
+The steps are written into the `dead-letters.md` runbook.
 
-Before implementing this workflow, verify:
+Observability
+-------------
 
-1. The actual Matching Engine event schemas and Kafka topics.
-2. Event, order, and execution identifier semantics.
-3. Order versioning or sequence guarantees.
-4. Whether quantity fields are cumulative or incremental.
-5. The supported order lifecycle and transition rules.
-6. The database transaction and consumer-offset strategy.
-7. Ownership of energy allocations and settlement.
-8. The retry, quarantine, replay, and reconciliation mechanisms.
+| Metric | Meaning |
+|---|---|
+| `order_updates_applied_total{transition}` | Applied updates by transition |
+| `order_updates_ignored_total{kind}` | `duplicate`, `stale`, `echo` |
+| `order_updates_quarantined_total{stage}` | Dead-lettered updates |
+| `order_orders_needing_reconciliation` | Flagged orders |
+| `order_update_apply_duration_seconds` | Transaction latency |
+| `order_me_ack_latency_seconds` | Time from order creation to first engine update |
 
-Keep proposed fields and behaviors explicitly marked as unconfirmed until they are aligned with the shared contracts and existing implementation.
+Required Tests
+--------------
+
+- **Matrix test:** a table-driven test covers every cell of the transition matrix for LIMIT and MARKET, in every stored status, including notes 1 to 5.
+- **Message validation:** each row of the status, event type, and quantity table, and a mismatch for each.
+- **Sequence rules:** stale, equal-and-identical, equal-and-different, and gap.
+- **Terminal rules:** echo, supersede, invalid, for both terminal sources.
+- **Convergence property:** for random valid event sequences, applying them with random duplication, reordering of stale events, and redelivery always ends in the same final state and never lets remaining quantity increase.
+- **Crash points:** a crash before the transaction commits, after the commit and before the offset commit, and during dead-letter handling.
+- **Concurrency:** a cancel request racing a fill ends in exactly one of `CANCELLED` or `FILLED`.
+- **Ledger:** every applied transition leaves `allocated_wh` consistent, and a replay changes nothing.
+
+Decisions and Dependencies
+--------------------------
+
+### Resolved decisions
+
+| ID | Open item | Decision |
+|---|---|---|
+| Y-1 | Actual engine event schemas and topics | `OrderUpdated` on `gridx.orders.updates.v1`, extended as in the Kafka contracts document. |
+| Y-2 | Identifier semantics | `event_id` (UUID) identifies the message, `order_id` the order, `order_seq` the order's version. There are no execution identifiers in the order contract. |
+| Y-3 | Versioning or sequence guarantee | `order_seq`, strictly increasing per order, set by the engine for every event about it. |
+| Y-4 | Cumulative or incremental quantities | Cumulative and absolute. |
+| Y-5 | Supported lifecycle and transitions | The transition matrix above. |
+| Y-6 | Transaction and offset strategy | One transaction per event or batch, offset committed after the transaction, no skipping on failure. |
+| Y-7 | Ownership of allocation and settlement | The Order Service owns SELL allocation. Billing and Settlement own money. |
+| Y-8 | Retry, quarantine, replay, reconciliation | Backoff for transient failures, `consumer_dead_letters` for permanent ones, `cmd/dead-letter-replay`, and the operator path above. |
+
+### Remaining items needing sign-off
+
+| ID | Item | Owner |
+|---|---|---|
+| Y-O1 | Engine contract: `order_seq` on every event, `event_type` agreeing with `status`, `CANCELLED` and `EXPIRED` never with 0 remaining, `REJECTED` mapped by the event mapper, and `order_seq = 0` for `UNKNOWN_ORDER` replies. | Matching Engine |
+| Y-O2 | Add the `engine_updated_at TIMESTAMPTZ` column to `order_status_history` in migration `00001`. | Order Service team |
+| Y-O3 | The API exposes `status`, `status_reason`, and `filled_quantity_wh` but no trade list. Decide where the trade list for an order comes from. | API Gateway, Billing and Settlement, product |
+| Y-O4 | Operator tooling for corrections (the `SYSTEM` history source) and who is authorised. | Operations |
+
+Record confirmed decisions in the shared contracts before describing them as existing behaviour.
