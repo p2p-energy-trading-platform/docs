@@ -38,7 +38,7 @@ The following endpoints can be accessed by iot ingestion.
 
 | Method | Endpoint | Description | Request / Response Payload Example |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/api/link-requests` | Called by your platform when a user initiates a meter claim. | **Req:** `{"registrationId": "REG-123", "meterId": "METER-001", "userReference": "USER-123"}`<br>**Res:** `{"status": "PENDING", "message": "Link request created"}` |
+| **POST** | `/api/link-requests` | Called by your platform when a user initiates a meter claim. | **Req:** `{"registrationId": "REG-123", "meterId": "METER-001", "userReference": "USER-123"}`<br>**Res:** `{"requestId": "REQ-123", "status": "PENDING", "message": "Link request created"}` |
 | **GET** | `/api/link-requests/:requestId` | Called by your platform to poll or check the approval status. | **Res:** `{"registrationId": "REG-123", "meterId": "METER-001", "status": "APPROVED"}` |
 
 ### 1. How the IoT Service Sends the Request
