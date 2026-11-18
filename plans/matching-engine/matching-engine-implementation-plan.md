@@ -12,6 +12,8 @@ connie-title: Matching Engine - Implementation Plan
 
 **Status:** Draft v1
 
+> **Superseded where this document disagrees with later decisions.** Currency here is AED. Zones here are not the string grid id. Recovery here is not the design. Those corrections, and the list of engine work that is not implemented, are in [proposed engine changes](proposed-engine-changes.md). The crash-recovery document is withdrawn. This plan is otherwise left as the original component design.
+
 ---
 
 # 1. Purpose
