@@ -64,7 +64,7 @@ The engine also publishes `trade.executed`. This service does not consume that t
 9. [Recovery Snapshot](09-kafka-based-recovery.md)
 10. [API and Error Handling](10-api-and-error-handling.md)
 11. [Security, Observability and Testing](11-security-observability-and-testing.md)
-13. [Folder Structure](12-service-folder-structure.md)
+12. [Folder Structure](12-service-folder-structure.md)
 
 ## Fixed rules
 
