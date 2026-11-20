@@ -14,6 +14,8 @@ The versioned contract is owned in the organization `protobuf` repository under 
 
 Start with bounded unary reads. A live subscription is deliberately excluded until fan-out, replay, and backpressure requirements are known; one gRPC stream per browser is not an acceptable default architecture.
 
+> **Update (PETPG-347):** those requirements were settled and a live subscription was added as `IotService.StreamHouseLive` in `gridx.iot.v1` (SDK v1.25.0). Fan-out happens in the gateway, so there is still no stream per browser. See *Live updates: StreamHouseLive* below.
+
 ```protobuf
 syntax = "proto3";
 
@@ -121,6 +123,73 @@ Transport identity identifies the calling service. User/resource authorization s
 Emit RPC count, status, latency histograms, in-flight requests, rejected requests, response rows/bytes, Redis fallback count, and dependency latency. Trace gRPC to Redis/Postgres calls and correlate with request ID and W3C trace context. Labels must use method/status, never raw grid or house IDs. Logs redact identities according to the platform policy.
 
 Before release, define measurable targets for availability and p95/p99 latency separately for latest and historical reads. Load tests must cover cache hits, cache misses, maximum historical pages, concurrent callers, dependency slowdown, cancellation, and graceful shutdown.
+
+## Live updates: StreamHouseLive
+
+Decided in the [IoT live data design](../iot/2026-11-12-iot-live-data-design.md) (PETPG-347), approved by Manimehalan Thiyagarajan on 12 November 2026.
+
+```protobuf
+service IotService {
+  // ... unary reads ...
+  rpc StreamHouseLive(StreamHouseLiveRequest) returns (stream StreamHouseLiveResponse);
+}
+
+message StreamHouseLiveRequest {
+  string house_id = 1;
+  // Optional. When set, the house must belong to this user (NOT_FOUND otherwise).
+  string owner_user_id = 2;
+}
+
+message StreamHouseLiveResponse {
+  oneof event {
+    MeterReading reading = 1;
+    MeterStatusUpdate status = 2;
+  }
+}
+
+message MeterStatusUpdate {
+  MeterStatus meter_status = 1;
+  google.protobuf.Timestamp last_heartbeat_at = 2; // unset when offline
+}
+```
+
+**Caller and fan-out.** The API Gateway is the only caller. Each gateway instance opens one stream per house its WebSocket clients watch and leaves `owner_user_id` empty, because it checks ownership with `GetHouse` when each user subscribes. The answers to the questions above:
+
+- **Fan-out:** gateway, one stream per watched house per instance.
+- **Replay:** none. Delivery is best effort, and callers resync over the unary RPCs.
+- **Backpressure:** latest-wins. A slow stream skips readings instead of queueing them.
+
+**Semantics.** The stream first sends the current status and the latest reading (if any), then each newer reading and every meter status change. Readings are published only when `SetLatestIfNewer` stores them as the house's latest, so Kafka replays and out-of-order readings are never live news. A house going online is detected by the heartbeat script. Going offline is detected by a timer per watched house at the end of the 10-minute liveness window, without Redis keyspace notifications.
+
+**Inside the service.** Ingestion publishes events on Redis pub/sub channel `house:{houseId}:live`, so any instance can serve any house. Publishing is best effort: failures are counted and never fail a record or hold a Kafka offset. Each instance runs one hub with one Redis subscription for the houses its streams watch, and it never holds its lock during Redis calls.
+
+**Errors.**
+
+| Condition | Status |
+|---|---|
+| Bad house ID | `INVALID_ARGUMENT` |
+| Unknown house, or not owned when `owner_user_id` is set | `NOT_FOUND` |
+| Live feed down or the server shutting down; retry with backoff | `UNAVAILABLE` |
+| The stream reached its maximum age (`LIVE_STREAM_MAX_AGE`, 60 minutes); reopen it | `DEADLINE_EXCEEDED` |
+
+**Server settings.** These apply to every RPC:
+
+- **Stream interceptors** mirror the unary ones: panic recovery and logging. Normal stream endings (`CANCELED`, `DEADLINE_EXCEEDED`, `UNAVAILABLE`) are logged at INFO.
+- **Keepalive enforcement:** `MinTime` 20 s (`GRPC_KEEPALIVE_MIN_TIME`). The gateway pings every 30 s; grpc-go's own default of 5 minutes would reject it.
+- **Server keepalive:** `Time` 2 minutes, `Timeout` 20 s.
+- **Concurrent streams:** a maximum of 1000 per connection (`GRPC_MAX_CONCURRENT_STREAMS`).
+
+`LIVE_ENABLED=false` turns publishing off and makes the RPC answer `UNAVAILABLE`.
+
+**Shutdown.** Live streams end before `GracefulStop`, with `UNAVAILABLE`, so the gateway reconnects to a healthy instance at once instead of waiting for the graceful-stop timeout.
+
+**Metrics.**
+
+- `iot_ingestion_live_streams`
+- `iot_ingestion_live_events_published_total{type}`
+- `iot_ingestion_live_publish_errors_total`
+- `iot_ingestion_live_events_conflated_total`
+- `iot_ingestion_live_offline_detected_total`
 
 ## Contract and interoperability tests
 

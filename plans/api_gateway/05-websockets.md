@@ -87,6 +87,8 @@ Define and test:
 
 Kafka is the durable event broker for real-time events. The gateway consumes dedicated, versioned client-facing topics rather than publishing raw internal order, trade, wallet, or IoT records directly to WebSocket clients.
 
+> **IoT live data does not use this Kafka path.** PETPG-347 decided that the gateway never consumes Kafka for IoT; live meter data reaches it through a gRPC server stream from iot-ingestion-dispatch. See *IoT live data (PETPG-347)* below.
+
 Example topic separation:
 
 ```text
@@ -111,6 +113,44 @@ The design must state:
 - Backpressure from gateway instances to the broker.
 
 Do not promise reliable delivery unless events are durably stored and replayable. Clients should obtain an authoritative snapshot through REST after connecting/reconnecting, then apply subsequent events.
+
+## IoT live data (PETPG-347)
+
+Decided in the [IoT live data design](../iot/2026-11-12-iot-live-data-design.md), approved by Manimehalan Thiyagarajan on 12 November 2026, and implemented in November 2026. The client-facing protocol is documented in the api-gateway repository at `docs/websocket-protocol.md`.
+
+**Path.** Smart meter → MQTT → Kafka → iot-ingestion-dispatch, which stores the reading and publishes it on Redis pub/sub (`house:{houseId}:live`) only when it becomes the house's latest reading. Each ingestion instance serves `IotService.StreamHouseLive` (gRPC server streaming). Each gateway instance opens **one** upstream stream per house that its clients watch, shared by every socket watching that house, and publishes its events to the `iot.house.<houseId>` WebSocket topic. There is never one gRPC stream per browser.
+
+| Property | Decision |
+|---|---|
+| Publisher | iot-ingestion-dispatch publishes; the gateway forwards. |
+| Client topic | `iot.house.<houseId>`, for the house's owner (an APPROVED meter registration). Ownership is checked with `IotService.GetHouse(owner_user_id)` on every subscribe; an unknown house and someone else's house get the same `TOPIC_NOT_ALLOWED`. |
+| Events | `reading` (exactly the `GET …/latest-reading` response), `status` (`online`/`offline` with `lastHeartbeatAt`), `stream-state` (`interrupted`/`live` when the gateway's upstream drops and recovers). |
+| Delivery | At most once, best effort. Nothing is stored for replay. |
+| Ordering | Per house, by `(measuredAt, seq)`: only a reading newer than the stored latest one is published, and clients ignore anything older than what they hold. |
+| Event identity | `meterId:seq` for readings. |
+| Resync | After every `subscribed` reply (first connect and every reconnect) and after `stream-state` `live`, the client refetches the latest reading and the house over REST. |
+| Backpressure | Latest-wins at each hop (ingestion stream mailbox, gateway upstream); the existing 1 MB slow-client limit protects each socket. |
+| Offline detection | The ingestion hub sets a timer for the end of each watched house's 10-minute liveness window and publishes `offline` when the status key is gone. No Redis keyspace notifications. |
+| Stream lifetime | The gateway gives each upstream stream a 30-minute deadline and reopens it at once; the server ends streams after 60 minutes. Errors retry with backoff from 1 s to 30 s. An unwatched house's stream closes after a 10-second grace period. |
+
+**Connection lifecycle.** Implemented as this plan recommends:
+
+- Tickets are single use and expire after 30 seconds.
+- The browser `Origin` is checked against `CORS_ORIGINS` before the ticket is used.
+- Each socket is closed with application code **4001 "Reauthenticate"** after `WS_MAX_CONNECTION_AGE_MS`, which defaults to 15 minutes (the access-token lifetime) with ±10% jitter. The client reconnects at once with a new ticket, which re-checks the login and ownership. A logout or lost ownership therefore stops live data within one token lifetime.
+
+**Extension point.** Features add topics by registering a topic provider (`app.realtime.registerTopicProvider`) with an asynchronous permission check and hooks for a key's first and last local subscriber. The IoT topic is the first provider. Other domains can still choose the Kafka path above.
+
+**Verification.** Unit and integration tests in all three services, plus a real-stack run covering:
+
+- live readings every 5 s with no polling
+- one shared upstream for two tabs
+- refused foreign houses and foreign origins
+- recovery from ingestion, gateway and Redis restarts
+- pausing a hidden tab
+- grace-period clean-up
+- offline detection with the real 10-minute window
+- the 4001 reconnect
 
 ## Origin and transport security
 
