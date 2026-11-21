@@ -179,17 +179,9 @@ message MeterStatusUpdate {
 - **Server keepalive:** `Time` 2 minutes, `Timeout` 20 s.
 - **Concurrent streams:** a maximum of 1000 per connection (`GRPC_MAX_CONCURRENT_STREAMS`).
 
-`LIVE_ENABLED=false` turns publishing off and makes the RPC answer `UNAVAILABLE`.
-
 **Shutdown.** Live streams end before `GracefulStop`, with `UNAVAILABLE`, so the gateway reconnects to a healthy instance at once instead of waiting for the graceful-stop timeout.
 
-**Metrics.**
-
-- `iot_ingestion_live_streams`
-- `iot_ingestion_live_events_published_total{type}`
-- `iot_ingestion_live_publish_errors_total`
-- `iot_ingestion_live_events_conflated_total`
-- `iot_ingestion_live_offline_detected_total`
+There is no kill switch, and no live-specific metrics yet: metrics wait for a platform-wide metrics plan. A failed publish is logged as a warning.
 
 ## Contract and interoperability tests
 

@@ -457,7 +457,7 @@ Implemented as designed in the six steps of [section 11](#11-implementation-plan
 |---|---|---|
 | 1 | `protobuf` | `StreamHouseLive` and `MeterStatusUpdate`, released as **v1.25.0** (v1.24.0 was taken by an unrelated release) |
 | 2 | `api-gateway` | Topic providers, async subscribe, `TOPIC_UNAVAILABLE`, Origin check, 4001 maximum socket age, 120-character topics, `docs/websocket-protocol.md` |
-| 3 | `iot-ingestion-dispatch` | Publishing, the live hub, `StreamHouseLive`, stream interceptors, keepalive, stream limit, shutdown order, metrics |
+| 3 | `iot-ingestion-dispatch` | Publishing, the live hub, `StreamHouseLive`, stream interceptors, keepalive, stream limit, shutdown order |
 | 4 | `api-gateway` | The `iot.house.<houseId>` topic with one shared upstream per watched house |
 | 5 | `frontend-web` | `RealtimeClient`, `useLiveHouse`, and the Live / Connecting / Reconnecting / Paused badge |
 | 6 | All | Real-stack verification, and this record in `05-websockets.md` and `08-grpc.md` |
@@ -465,7 +465,10 @@ Implemented as designed in the six steps of [section 11](#11-implementation-plan
 **Differences from the design:**
 
 - **Maximum socket age.** Each connection gets its own timer instead of a check in the 30-second heartbeat loop, so it closes on time rather than up to 30 s late.
-- **Metric names.** The ingestion metrics are `iot_ingestion_live_*`, matching that service's existing prefix, not `iot_live_*`.
+- **Changed in code review (Mani, 21 November 2026), for iot-ingestion-dispatch:**
+  - **No metrics.** Metrics wait for a proper metrics plan, so none were added. Failed publishes are logged as warnings instead of counted.
+  - **No kill switch.** `LIVE_ENABLED` was removed; live updates are always on.
+  - **No event version.** The Redis event is private to the service, so it carries no version field: `{"type": …}`.
 - **Status events.** A status event is published only when a house goes from offline to online. Online and offline are defined by whether the status key exists, so no other change is visible to clients.
 - **Paused state.** The frontend has a `paused` socket state for a hidden tab, so the badge reads "Paused" instead of looking like a failure.
 
