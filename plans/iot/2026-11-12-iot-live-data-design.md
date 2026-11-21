@@ -457,7 +457,7 @@ Implemented as designed in the six steps of [section 11](#11-implementation-plan
 |---|---|---|
 | 1 | `protobuf` | `StreamHouseLive` and `MeterStatusUpdate`, released as **v1.25.0** (v1.24.0 was taken by an unrelated release) |
 | 2 | `api-gateway` | Topic providers, async subscribe, `TOPIC_UNAVAILABLE`, Origin check, 4001 maximum socket age, 120-character topics, `docs/websocket-protocol.md` |
-| 3 | `iot-ingestion-dispatch` | Publishing, the live hub, `StreamHouseLive`, stream interceptors, keepalive, stream limit, shutdown order, metrics |
+| 3 | `iot-ingestion-dispatch` | Publishing, the live hub, `StreamHouseLive`, stream interceptors, keepalive, stream limit, shutdown order |
 | 4 | `api-gateway` | The `iot.house.<houseId>` topic with one shared upstream per watched house |
 | 5 | `frontend-web` | `RealtimeClient`, `useLiveHouse`, and the Live / Connecting / Reconnecting / Paused badge |
 | 6 | All | Real-stack verification, and this record in `05-websockets.md` and `08-grpc.md` |
@@ -465,7 +465,10 @@ Implemented as designed in the six steps of [section 11](#11-implementation-plan
 **Differences from the design:**
 
 - **Maximum socket age.** Each connection gets its own timer instead of a check in the 30-second heartbeat loop, so it closes on time rather than up to 30 s late.
-- **Metric names.** The ingestion metrics are `iot_ingestion_live_*`, matching that service's existing prefix, not `iot_live_*`.
+- **Changed in code review (Mani, 21 November 2026):**
+  - **No metrics.** Metrics wait for a proper metrics plan, so none were added in iot-ingestion-dispatch or api-gateway. Failed publishes are logged as warnings instead of counted.
+  - **No kill switches.** `LIVE_ENABLED` (ingestion) and `VITE_REALTIME_ENABLED` (frontend) were removed; live updates are always on.
+  - **No event version.** The Redis event is private to the ingestion service, so it carries no version field: `{"type": …}`.
 - **Status events.** A status event is published only when a house goes from offline to online. Online and offline are defined by whether the status key exists, so no other change is visible to clients.
 - **Paused state.** The frontend has a `paused` socket state for a hidden tab, so the badge reads "Paused" instead of looking like a failure.
 
@@ -489,6 +492,11 @@ Implemented as designed in the six steps of [section 11](#11-implementation-plan
 
 - **Redis calls under the hub lock.** The hub called Redis while holding its lock, so a slow Redis could pause every house's events. Redis calls now run outside the lock, and a separate lock keeps subscribes and unsubscribes in order.
 - **Misleading shutdown warnings.** Normal shutdowns logged `UNAVAILABLE` stream endings as warnings; they now log at INFO.
+
+**Two more bugs found in the review pass and fixed:**
+
+- **Gateway reconnect loop.** The gateway reopened a stream at once whenever it ended with `DEADLINE_EXCEEDED` or ended normally. That is right after a stream's full life, but the IoT service also answers `DEADLINE_EXCEEDED` straight away when its database is slow, which would have caused a tight reconnect loop. It now reopens at once only if the stream delivered something; otherwise it backs off.
+- **Frontend after signing in again.** When a session expired, the realtime client stopped for good. Signing in navigates inside the app without a page reload, so live updates stayed off until a manual reload. Signing in now starts them again.
 
 ## Appendix A: files reviewed
 
